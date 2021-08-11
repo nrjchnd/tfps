@@ -7,6 +7,12 @@ This project is an effective real time system to block Internet Revenue Share Fr
 
 Please do not use this project unless you know exactly what you are doing or use at your own risk, please read carefully the license before using. 
 
+# Security Requirements
+
+This project was created to run in AWS behind a firewall. The only system with access to this server should be the softswitch or PBX. 
+
+*** PLEASE DO NOT INSTALL THE SYSTEM WITHOUT A FIREWALL, THERE IS NO AUTHENTICATION BY DESIGN ***
+
 # Requirements
 This project requires:
 
