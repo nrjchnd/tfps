@@ -18,12 +18,12 @@ This project requires:
 
 Debian 10 Buster\
 OpenSIPS 3.2 - All modules\
-Asterisk 16  - Installed with apt-get\
+Asterisk 16  - Deafult installed with apt-get\
 Asterisk TTS - https://zaf.github.io/asterisk-googletts/\
 msmtp - smtp client\
 mailutils - email client\
 m4 - GNU m4 preprocessor\
-ipabusedb key\
+ipabusedb key
 
 # Installation
 
