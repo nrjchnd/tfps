@@ -16,14 +16,14 @@ This project was created to run in AWS behind a firewall. The only system with a
 # Requirements
 This project requires:
 
-Debian 10 Buster
-OpenSIPS 3.2 - All modules
-Asterisk 16  - Installed with apt-get
-Asterisk TTS - https://zaf.github.io/asterisk-googletts/
-msmtp - smtp client
-mailutils - email client
-m4 - GNU m4 preprocessor
-ipabusedb key
+Debian 10 Buster\
+OpenSIPS 3.2 - All modules\
+Asterisk 16  - Installed with apt-get\
+Asterisk TTS - https://zaf.github.io/asterisk-googletts/\
+msmtp - smtp client\
+mailutils - email client\
+m4 - GNU m4 preprocessor\
+ipabusedb key\
 
 # Installation
 
