@@ -29,9 +29,17 @@ ipabusedb key
 
 # Installation
 
+Deploy the database to MySQL 
+
+```
+mysql < schema.db
+```
+
 Fill the file defines.m4 with your own definitions, then run
 
+```
 ./install.sh
+```
 
 Restart OpenSIPS and Asterisk
 
