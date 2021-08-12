@@ -8,11 +8,13 @@ if you have configured your TFPS server to run as a redirect server, you should 
 
 sip.conf
 
-`[fps]\
-type=peer\
-context=fps\
-host=<your server>\
-port=5060` 
+```
+[fps]
+type=peer
+context=fps
+host=<your server>
+port=5060
+``` 
 
 extensions.conf
 
