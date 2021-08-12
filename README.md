@@ -35,7 +35,7 @@ Deploy the database to MySQL
 mysql < schema.db
 ```
 
-Fill the file defines.m4 with your own definitions, then run
+Fill the file defines.m4 (you will need an api key for ipabusedb https://www.abuseipdb.com/) with your own definitions, then run
 
 ```
 ./install.sh
