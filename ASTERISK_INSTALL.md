@@ -77,8 +77,6 @@ same=>n(CONGESTION),
 same=>n,Dial(SIP/provider/${EXTEN})
 ```
 
-Where DAHDI/g0 is the channel available for International Calls. This channel can be DAHDI, SIP or any other channel capable to make international calls.
-
 DISCLAIMER
 No service can guarantee 100% that you will not be a victim of fraud. We can remove 99.999% of all attacks using our system, but it is wise apply also other measures. We strongly advise you to, beyond installing this system, take other measures not limited to:
 1.	Do not allow Internet Access to your PBX web interface. Most web interfaces are highly vulnerable.
