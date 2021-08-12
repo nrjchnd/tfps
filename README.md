@@ -1,7 +1,7 @@
 # tfps
 Telephony Fraud Prevention System
 
-![TFPS LOGO INPI](https://user-images.githubusercontent.com/4958202/129224574-0f294ebd-3e48-4a19-83e7-fa09529f576c.jpg)
+<img src="https://user-images.githubusercontent.com/4958202/129224574-0f294ebd-3e48-4a19-83e7-fa09529f576c.jpg" width="250">
 
 # Description
 
