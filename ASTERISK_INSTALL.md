@@ -35,8 +35,6 @@ same=>n,Dial(SIP/provider/${original});(Customize here to send the call ahead)
 same=>n,hangup(16)
 ```
 
-Where DAHDI/g0 is the channel available for International Calls. This channel can be DAHDI, SIP or any other channel capable to make international calls.
-
 Response Codes
 302 - Moved Temporarily with a prefix of A00 – Call Approved
 603 - Call not approved
