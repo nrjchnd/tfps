@@ -65,12 +65,10 @@ modparam("acc", "report_cancels", 0)
    if you enable this parameter, be sure to enable "append_fromtag"
    in "rr" module */
 modparam("acc", "detect_direction", 0)
+modparam("acc", "log_facility", "LOG_LOCAL1")
 modparam("acc", "db_url", "mysql://root:SQL_PASSWORD@localhost/fps")
-
-# ----- permission params ----
-loadmodule "permissions.so"
-modparam("permissions", "db_url", "mysql://root:SQL_PASSWORD@localhost/fps")
-modparam("acc", "extra_fields", "db: REASON->reason; SOURCE_IP->source_ip; FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence")
+modparam("acc", "extra_fields", "db: REASON->block_reason; SOURCE_IP->source_ip; FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence")
+modparam("acc", "extra_fields", "log: REASON->block_reason; SOURCE_IP->source_ip; FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence")
 
 # ----- avpops params ----
 loadmodule "avpops.so"
@@ -136,35 +134,51 @@ route[initial] {
     $avp(timeattempts)=30;              #Time Between Attempts
     $avp(proxyip)="PRIVATE_IP";
     $avp(severity)=1;
-    $avp(email)="ISP_EMAIL";
+    $avp(email)="NOTIFICATION_EMAIL";
 
     #Get the identity of the users
-    if(is_present_hf("X-tfps")){
-        $avp(username)=$(hdr(X-tfps){s.select,0,@});
-        $avp(domain)=$(hdr(X-tfps){s.select,1,@});
-    } else {
-        $avp(username)=$fU;
-        $avp(domain)=$fd;
-    }
     
-    #Get source IP
-    if(is_present_hf("P-Received")) {
-        $avp(sourceip):=$hdr(P-Received);
-    } else {
-        $avp(sourceip):=$si;
-    }
+    #Default, get from the From header
+    $avp(username)=$fU;
+    $avp(domain)=$fd;
 
-    #Get user Agent
-    if(is_present_hf("P-UA")) {
-        $avp(ua):=$hdr(P-UA);
-    } else {
-        $avp(ua):=$ua;
-    }
+    if(is_present_hf("P-tfps")){
+    
+    # New standard, all parameters in a single header
 
-    #Get concurrent calls
-    if(is_present_hf("P-Calls")) {
-        $avp(simcalls)=$(hdr(P-Calls){s.int});
-    }
+        $avp(username)=$(hdr(P-tfps){s.select,0,;});
+        $avp(domain)=$(hdr(P-tfps){s.select,1,;});
+        $avp(sourceip)=$(hdr(P-tfps){s.select,2,;});
+        $avp(ua)=$(hdr(P-tfps){s.select,3,;});
+        $avp(simcalls)=$(hdr(P-tfps){s.select,4,;});
+    
+    } else {
+    
+    # Old Standard, all parameters in different headers
+        if(is_present_hf("X-tfps")){
+                $avp(username)=$(hdr(X-tfps){s.select,0,;});
+                $avp(domain)=$(hdr(X-tfps){s.select,1,;});
+        }
+        
+        #Get source IP
+        if(is_present_hf("P-Received")) {
+                $avp(sourceip):=$hdr(P-Received);
+        } else {
+                $avp(sourceip):=$si;
+        }
+
+        #Get user Agent
+        if(is_present_hf("P-UA")) {
+                $avp(ua):=$hdr(P-UA);
+        } else {
+                $avp(ua):=$ua;
+        }
+
+        #Get concurrent calls
+        if(is_present_hf("P-Calls")) {
+                $avp(simcalls)=$(hdr(P-Calls){s.int});
+        }
+    }    
 
     #Define IP address as public or private
     if( $(avp(sourceip){ip.matches,10.0.0.0/8}) ||
@@ -186,7 +200,8 @@ route[initial] {
         do_accounting("db|log", "failed");
         route(check_for_fraud);
         exit;
-    } 
+    }
+    record_route(); 
 }
 
 ##Main routine to check for fraud
@@ -225,10 +240,12 @@ route[check_for_fraud] {
                 } else {
                         #fetch also the origination country
                         cache_fetch("local","country_$avp(sourceip)",$var(incountry));
+                        cache_fetch("local","score_$avp(sourceip)",$var(abuse));
+                        $acc_extra(CONFIDENCE)=$(var(abuse){s.int});
                         xlog("L_INFO","Check ip report from cache score=$var(abuse), country=$var(incountry) ");
                 }
 
-                if($(var(abuse){s.int})>=75) {
+                if($(var(abuse){s.int})>=25) {
                         xlog("L_INFO","Fraud Detected: IP Blacklisted $avp(context),f=$fu, r=$ru, ua=$ua");
                         $acc_extra(REASON)="IP Blacklisted";
                         t_reply(603,"Declined");
@@ -512,14 +529,14 @@ route[preadmission] {
         exit;
     }
 
-    if($(ct{uri.user}) =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
+    if($(ct.fields(uri){uri.user}) =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
         xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! ct=$ct");
         $acc_extra(REASON)="SQL injection";
         t_reply(603,"Declined");
         exit;
     }
 
-    if($(ct{uri.host}) =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
+    if($(ct.fields(uri){uri.host}) =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
         xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! ct=$ct");
         $acc_extra(REASON)="SQL injection";
         t_reply(603,"Declined");

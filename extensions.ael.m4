@@ -42,7 +42,7 @@ context onboarding {
 			agi(googletts.agi,"To set your parameters, I have to ask you two simple questions, these questions will be asked only this time",${LANG});			
 		} else {
 			agi(googletts.agi,"The verification failed, please try again!",${LANG});
-			hangup(16);
+			hangup(21);
 		}
 	start:
 		agi(googletts.agi,"How many concurrent international calls do you need on business hours?, please dial a single digit after the beep:",${LANG},#);
@@ -82,7 +82,7 @@ macro getuserdomain() {
 	
 	if("${SIP_HEADER(X-tfps)}"="") {
 			USERNAME=${CALLERID(num)};
-			FROM=SIP_HEADER(FROM);
+			FROM=${SIP_HEADER(FROM)};
 			DOMAIN="${CUT(CUT(FROM,@,2),\>,1)}";
 	} else {
 			USERNAME=${CUT(SIP_HEADER(X-tfps),@,1)};
@@ -149,7 +149,7 @@ macro change_params(username,domain) {
 		agi(googletts.agi, "user updated, goodbye!",${LANG});
 	} else {
 		agi(googletts.agi,"verify incorrect, goodbye!",${LANG});
-		hangup(16);
+		hangup(21);
 	}
 	return;
 }
@@ -165,7 +165,7 @@ macro new_country(country) {
 			hangup(16);			
 	} else {
 			agi(googletts.agi,"The verification failed, please try again!",${LANG});
-			hangup(16);
+			hangup(21);
 	}
 	return;
 }
@@ -180,7 +180,7 @@ macro new_destination_country(country) {
 			hangup(16);			
 	} else {
 			agi(googletts.agi,"The verification failed, please try again!",${LANG});
-			hangup(16);
+			hangup(21);
 	}
 	return;
 }
