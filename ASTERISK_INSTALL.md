@@ -18,18 +18,20 @@ port=5060
 
 extensions.conf
 
-`[from-internal] ; Set there the context for your users
+```
+[from-internal] ; Set there the context for your users
 ;FPS for International Calls
 exten=_011[1-9].,1,set(GROUP()=fps)
 same=>n,set(ncalls=${GROUP_COUNT(fps)})
 same=>n,set(_original=${EXTEN})
 same=>n,SIPAddHeader(P-tfps: ${CALLERID(num)};${SIPDOMAIN};${CHANNEL(recvip)};${CHANNEL(useragent)};${ncalls})
 same=>n,dial(SIP/fps/${EXTEN:2})
- 
+
 ;For calls approved 
 exten=_A.,1,Answer()
 same=>n,Dial(SIP/provider/${original});(Customize here to send the call ahead)
 same=>n,hangup(16)`
+```
 
 Where DAHDI/g0 is the channel available for International Calls. This channel can be DAHDI, SIP or any other channel capable to make international calls.
 
