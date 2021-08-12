@@ -1,17 +1,17 @@
-## Asterisk Integration Guide
+# Asterisk Integration Guide
 
 FPS is a simple system to protect your PBX from fraudulent calls. It is very easy to integrate to your PBX. After creating your account and setting your calling policies, you will need to configure your Asterisk or FreeSwitch box. FPS can work like a SIP Provider or a SIP redirect server, but instead of completing your call, in prevention mode, it redirects your call back with a three-character, prefix. After receiving vthis prefix, you can decide what to do in your dial plan. The system can be installed in FREE detection mode (only email alert) or in the sophisticated and complete prevention mode (redirects).
 
-# Method 1: Failover
+## Method 1: Failover
 
 if you have configured your TFPS server to run as a redirect server, you should follow the instructions below. 
 
 sip.conf
 
-`[fps]
-type=peer
-context=fps
-host=<your server>
+`[fps]\
+type=peer\
+context=fps\
+host=<your server>\
 port=5060` 
 
 extensions.conf
