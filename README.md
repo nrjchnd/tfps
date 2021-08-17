@@ -48,4 +48,23 @@ Restart OpenSIPS and Asterisk
 There are two modes of operation. 503/603 and Redirect.  In the 503/603 the system will respond with 603 each time it detects a fraud. This response shouldn't failover to the next gateway. When receiving a 503, the system should failover to the next gateway and complete the call. 
 
 If in redirect mode, the system will return a 302 Moved Temporarily with a prefix A00 in the Request URI, in the client system, strip the A00 and complete the call. See the docs
- 
+
+# Admin Options
+
+TFPS was designed to work hands free. However there are a few situations where you may want to interfere. For this we have the CLI utility tfpsctl. 
+
+To remove a user use:
+
+``` tfpsctl remove username domain ```
+
+To reset the quotas of a user:
+
+``` tfpsctl reset username domain ```
+
+To list users 
+
+``` tfpsctl list ```
+
+
+
+
