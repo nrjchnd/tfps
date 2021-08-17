@@ -1,20 +1,13 @@
-rm /tmp/* -rf
-rm /etc/opensips/*
-rm /etc/asterisk/extensions.ael
-rm /etc/asterisk/sip.conf
-rm defines.m4
+shred -u  /tmp/* 
+shred -u  /etc/opensips/*
+shred -u  /etc/asterisk/extensions.ael
+shred -u  /etc/asterisk/sip.conf
+shred -u  defines.m4
 mysql -e "delete from acc" fps
 mysql -e "delete from subscriber" fps
-cat /dev/null > /var/log/syslog
-cat /dev/null > /var/log/opensips.log
-cat /dev/null > /var/log/sip_acc.log
-cat /dev/null > /var/log/auth.log
-cat /dev/null > /var/log/btmp
-cat /dev/null > /var/log/daemon.log
+for file in /var/log/*; do cat /dev/null >${file}; done
+for file in /var/log/unattended-upgrades; do cat /dev/null >${file}; done
 cat /dev/null > /var/log/asterisk/messages
 cat /dev/null > /var/log/asterisk/queue_log
-
-
-
-
-
+shred -u ~/.*history
+shred -u /etc/ssh/*_key /etc/ssh/*_key.pub

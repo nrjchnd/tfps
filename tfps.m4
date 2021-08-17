@@ -105,6 +105,7 @@ modparam("rest_client", "ssl_verifypeer", 0)
 modparam("rest_client", "ssl_verifyhost", 0)
 loadmodule "json.so"
 loadmodule "stir_shaken.so"
+loadmodule "dialog.so"
 
 loadmodule "proto_udp.so"
 
@@ -135,7 +136,7 @@ route[initial] {
     $avp(proxyip)="PRIVATE_IP";
     $avp(severity)=1;
     $avp(email)="NOTIFICATION_EMAIL";
-
+    
     #Get the identity of the users
     
     #Default, get from the From header
@@ -193,11 +194,13 @@ route[initial] {
 
     #Run the antifraud
     if(is_method("INVITE")) {
+        create_dialog();
         $acc_extra(SOURCE_IP)=$avp(sourceip);
         $acc_extra(FROM)=$fu;
         $acc_extra(TO)=$ru;
         $acc_extra(UA)=$ua;
         do_accounting("db|log", "failed");
+        $dlg_val(key)=$avp(username)+$avp(domain);
         route(check_for_fraud);
         exit;
     }
@@ -255,6 +258,14 @@ route[check_for_fraud] {
         }
 
         #Step 3 - Check for too may calls from A to B in a short period of time
+        #blockdestination for 1 hour
+        if(cache_fetch("local", "block_$fU$rU", $avp(blockattempts))){
+                xlog("L_INFO","Blocked for 1 hour in a short period of time $var(currentattempts)/$avp(maxattempts) in $avp(timeattempts)");
+                $acc_extra(REASON)="Too many calls from same A-B in a short period of time";
+                t_reply(603, "Declined");
+                exit;
+        }
+
         if($(avp(maxattempts){s.int})>0) {
                 $avp(savedattempts)=0;
                 cache_fetch("local", "same_$fU$rU" ,$avp(savedattempts));
@@ -272,12 +283,20 @@ route[check_for_fraud] {
                 }
         }
 
-        #step 4 - Check Stir/Shaken identity
-        #route(verify_stir_shaken);
-
         #Detections ahead require user data
         #Get user data
         route(getuserdata);
+
+        #Step 4 - Captcha failures
+        #Check for captcha failures
+        $var(failcounter)=0;
+        if(cache_counter_fetch("local","counter_$avp(username)$avp(domain)",$var(failcounter))) {
+                if($var(failcounter) > MAX_CAPTCHAATTEMPTS ){
+                        xlog("L_INFO","Too many captcha failures $avp(username) $avp(domain) blocked for one hour");
+                        t_reply(603,"Declined");
+                        exit;
+                }
+        }
 
         # Step 5 Check for country of origin (Easy)
         xlog("L_INFO","Source countries authorized $avp(source_countries), IP type=$var(type)");
@@ -301,13 +320,18 @@ route[check_for_fraud] {
         if(do_routing(99999,"C",,$avp(rule_attrs))) {
                 #Country on $avp(rule_attrs)
                 xlog("L_INFO","Prefix found $avp(dr_prefix),$avp(rule_attrs), $avp(destination_countries)");
+
+                #Check destination Blacklisted
+                if($avp(rule_attrs)=~"DESTINATION_COUNTRIES_BLACKLIST") {
+                        xlog("L_INFO","Possible Fraud Detected: Destination Country in the Blacklist: $avp(rule_attrs), f=$fu, r=$ru, ua=$ua");
+                        $acc_extra(REASON)="Destination Country Blacklisted";
+                        t_reply(603,"Declined");
+                        exit;
+                }
                 
                 if($avp(destination_countries)=~$avp(rule_attrs)) {
                         xlog("L_INFO","Destination country Authorized: $avp(rule_attrs), $avp(username)@$avp(domain), f=$fu, r=$ru, ua=$ua");
                 } else {
-                        xlog("L_INFO","Possible Fraud Detected: Destination Country NOT Authorized: $avp(rule_attrs), f=$fu, r=$ru, ua=$ua");
-                        $rU="d"+$avp(rule_attrs)+$rU;
-                        $acc_extra(REASON)="Destination Country Not Authorized";
                         $du="sip:PRIVATE_IP:60101";
                         #Relay to media server
                         t_relay();
@@ -320,17 +344,8 @@ route[check_for_fraud] {
                 t_reply(603, "Declined");
                 exit;
         }
-
-        #Step 7 - Check for simultaneouscall from same A-B (Hard)
         
-        #blockdestination for 1 hour
-        if(cache_fetch("local", "block_$fU$rU", $avp(blockattempts))){
-                xlog("L_INFO","Blocked for 1 hour in a short period of time $var(currentattempts)/$avp(maxattempts) in $avp(timeattempts)");
-                $acc_extra(REASON)="Too many calls from same A-B in a short period of time";
-                t_reply(603, "Declined");
-                exit;
-        }
-
+        
         # Step 8 Check traffic depending on the business hours
         if(check_time_rec($avp(businesshours))) {
                 #Regular Hours
@@ -472,6 +487,19 @@ route[cancel] {
 
 route[preadmission] {
 
+    if(is_method("BYE")) {
+            if(loose_route()) {
+                if(is_present_hf("X-Asterisk_HangupCause")) {
+                       if($hdr(X-Asterisk_HangupCauseCode)=="21"){
+                               #Store fail attempts
+                               cache_add("local","counter_$dlg_val(key)",1,$avp(CACHE_BLOCK_TIME));
+                       }      
+                }
+                t_relay();
+                exit;
+            }
+    }
+    
     #Drop Options
     if(is_method("OPTIONS")){
         exit;

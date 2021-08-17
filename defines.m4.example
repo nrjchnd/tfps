@@ -9,6 +9,10 @@ define(`BUSINESS_HOURS',`America/New_York|20210104T090000|21000104T170000||WEEKL
 define(`NOTIFICATION_EMAIL',`')
 define(`AUTHORIZE_METHOD',`503')
 define(`VERIFICATION_METHOD',`CAPTCHA')
+define(`MAX_CAPTCHAATTEMPTS',`3')               #Max failed capctha_attempts
+define(`CACHE_BLOCK_TIME',`3600')               #Block failed captcha for this time
+define(`MAX_CONCURRENT',`5')                    #Maximum number of concurrent calls
+define(`DESTINATION_COUNTRIES_BLACKLIST',`CU,LV,TN,DZ,MA,AF,IQ,LK,LH,MV,TD,GN,EE,MG')  #PRISM TOP FRAUD DESTINATIONS
 define(`PIN',`6578')
 define(`SMTP_HOST',`smtp.gmail.com')
 define(`SMTP_EMAIL',`...@gmail.com')

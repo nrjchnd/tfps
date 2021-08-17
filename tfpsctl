@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+case $1 in
+    reset) 
+        opensips-cli -x mi cache_remove local quotaoff_$2@$3;
+        opensips-cli -x mi cache_remove local quota_$2@$3; 
+        echo "User $2@$3 reset!";
+        exit 1;
+        ;;
+    remove) 
+        mysql -e "delete from subscriber where username='$2' and domain='$3'" fps;
+        echo "User $2@$3 deleted!";
+        exit 1;
+        ;;
+    list)
+	    mysql -e "select username,domain,datetime_created,cc_calls as concurrent_calls, daily_quota, source_countries, destination_countries from subscriber" fps;
+	    exit 1;
+	    ;;
+esac
+echo "Invalid Command";
+echo " ";
+echo "Usage:"
+echo " ";
+echo "### Reset Quotas ###
+echo "" 
+echo "tfpsctl reset username@domain";
+echo ""
+echo "### Remove Username ###";
+echo "tfpsctl reset username@domain";
+echo ""
