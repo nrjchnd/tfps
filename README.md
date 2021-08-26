@@ -79,6 +79,11 @@ sudo ./install.sh
 
 Restart OpenSIPS and Asterisk
 
+```
+systemctl restart opensips
+systemctl restart asterisk
+```
+
 # Client Installation
 
 There are two modes of operation. 503/603 and Redirect.  In the 503/603 the system will respond with 603 each time it detects a fraud. This response shouldn't failover to the next gateway. When receiving a 503, the system should failover to the next gateway and complete the call. 
