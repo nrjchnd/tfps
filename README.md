@@ -35,7 +35,36 @@ Deploy the database to MySQL
 mysql < schema.db
 ```
 
-Fill the file defines.m4 (you will need an api key for ipabusedb https://www.abuseipdb.com/) with your own definitions, then run
+# Configure the system by editing the file defines.m4, pay attention to the backticks. Use nano or vi to edit the file 
+
+vi defines.m4
+
+```
+divert(-1)
+define(`PRIVATE_IP', `172.31.53.39')          #Private IP of the server
+define(`PUBLIC_IP', `54.146.73.100')          #Public IP of the server
+define(`PORT', `5060')                        #Port of the Server
+define(`SQL_ACCOUNT',`root')                  #SQL account, always use root
+define(`SQL_PASSWORD', `')                    #SQL password leave blank, mysql is running without external access
+define(`ABUSE_DB_KEY', `a386a124f2474f95417eadff5bfa0badbae51c3dd81895c9d0e3e597e294b5a96108a0f5124064ab')  #IP abuse DB key (obtained at https://www.abuseipdb.com/)
+define(`BUSINESS_HOURS',`America/New_York|20210104T090000|21000104T170000||WEEKLY|||MO,TU,WE,TH,FR')        #Define business hours, see format at the RFC2445 (Timezone|StartDate|EndDate|Periodicity|||Days of week)
+define(`ISP_EMAIL',`from_email')                      #Email in the From address
+define(`NOTIFICATION_EMAIL',`some_email')             #Email where to send the notifications
+define(`AUTHORIZE_METHOD',`503')                      #503 - (Use 503/603 to authorize/deny calls), or 302 (Send 302 Redirect) 
+define(`VERIFICATION_METHOD',`CAPTCHA')               #CAPTCHA/PIN (CAPTCHA, simpler for the user, PIN, safer, but have to be distributed)
+define(`PIN',`6578')                                  #PIN to authorize calls if the method is PIN
+define(`MAX_CAPTCHAATTEMPTS',`3')               #Max failed capctha_attempts
+define(`CACHE_BLOCK_TIME',`3600')               #Block failed captcha for this time
+define(`MAX_CONCURRENT',`5')                    #Maximum number of concurrent calls
+define(`DESTINATION_COUNTRIES_BLACKLIST',`CU,LV,TN,DZ,MA,AF,IQ,LK,LH,MV,TD,GN,EE,MG')  #PRISM TOP FRAUD DESTINATIONS, DEFAULT LIST OF COUNTRIES BLOCKED
+define(`SMTP_HOST',`some_host.some_domain')            #EMAIL ACCOUNT CONFIGURATION
+define(`SMTP_EMAIL',`some_user@some_domain')     #EMAIL ACCOUNT CONFIGURATION
+define(`SMTP_ACCOUNT','some_account')           #EMAIL ACCOUNT CONFIGURATION
+define(`SMTP_USER',`some_user')                 #EMAIL ACCOUNT CONFIGURATION
+define(`SMTP_PASSWORD',`some_password')         #EMAIL ACCOUNT CONFIGURATION
+```
+
+After filling the file defines.m4 (you will need an api key for ipabusedb https://www.abuseipdb.com/) with your own definitions, then run
 
 ```
 ./install.sh
