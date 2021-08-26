@@ -29,15 +29,22 @@ ipabusedb key
 
 # Installation
 
+The installation is made using SSH. Please use ssh or putty to access your instance. 
+
 Deploy the database to MySQL 
 
 ```
-mysql < schema.db
+sudo mysql < schema.db
 ```
 
 # Configure the system by editing the file defines.m4, pay attention to the backticks. Use nano or vi to edit the file 
 
+Go to the directory below 
+
+```
+cd /usr/src/tfps
 vi defines.m4
+``` 
 
 ```
 divert(-1)
@@ -67,7 +74,7 @@ define(`SMTP_PASSWORD',`some_password')         #EMAIL ACCOUNT CONFIGURATION
 After filling the file defines.m4 (you will need an api key for ipabusedb https://www.abuseipdb.com/) with your own definitions, then run
 
 ```
-./install.sh
+sudo ./install.sh
 ```   
 
 Restart OpenSIPS and Asterisk
@@ -84,15 +91,15 @@ TFPS was designed to work hands free. However there are a few situations where y
 
 To remove a user use:
 
-``` tfpsctl remove username domain ```
+``` sudo tfpsctl remove username domain ```
 
 To reset the quotas of a user:
 
-``` tfpsctl reset username domain ```
+``` sudo tfpsctl reset username domain ```
 
 To list users 
 
-``` tfpsctl list ```
+``` sudo tfpsctl list ```
 
 
 
