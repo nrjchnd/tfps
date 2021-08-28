@@ -1,6 +1,6 @@
 globals {
     pin=PIN;
-	account=_ACCOUNT_PASSWORD;
+	account=SQL_ACCOUNT;
 	sql_password=SQL_PASSWORD;
 	LANG=en;
 }
@@ -75,15 +75,16 @@ context onboarding {
 //Get the username and domain from SIP Headers
 macro getuserdomain() {
 	if("${SIP_HEADER(P-Source)}"="") {
+		SET(SOURCEIP=${CHANNEL(recvip)});
 		NoOP(No source IP available);
 	} else {
-		SOURCEIP="${SIP_HEADER(P-Source)}";
+		SET(SOURCEIP=${SIP_HEADER(P-Source)});
 	}
 	
 	if("${SIP_HEADER(X-tfps)}"="") {
-			USERNAME=${CALLERID(num)};
-			FROM=${SIP_HEADER(FROM)};
-			DOMAIN="${CUT(CUT(FROM,@,2),\>,1)}";
+			Set(USERNAME=${CALLERID(num)});
+			Set(FROM=${SIP_HEADER(From)});
+			Set(DOMAIN=${CUT(CUT(FROM,@,2),\>,1)});
 	} else {
 			USERNAME=${CUT(SIP_HEADER(X-tfps),@,1)};
 			DOMAIN=${CUT(SIP_HEADER(X-tfps),@,2)};
@@ -99,12 +100,20 @@ macro setuserdomain() {
 	return;
 }
 
+//Set the user and domain parameters in the database
+macro captcha_failure() {
+	MYSQL(Connect connid localhost ${account} ${sql_password} fps);
+	MYSQL(Query resultid ${connid} INSERT INTO captcha_failure_events (username,domain,ip) values('${USERNAME}','${DOMAIN}','${SOURCE_IP}'));
+	MYSQL(Disconnect ${connid});
+	return;
+}
+
 //Verify by captcha or pin
 macro verify() {
 
 	if("VERIFICATION_METHOD"="CAPTCHA") {
 		Verbose("Voice Captcha, return in verify_return");
-		challenge=${RAND(0,9999)};
+		Set(challenge=${RAND(0,9999)});
 		answer();
 		agi(googletts.agi,"Security check, please type the following digits in the keypad","${LANG}");
 		saydigits(${challenge});
@@ -114,6 +123,9 @@ macro verify() {
 			agi(googletts.agi,"Sequence correct",${LANG});
 			verify_return=true;
 		} else {
+			&getuserdomain();
+			Noop(Username = ${USERNAME}, domain=${DOMAIN});
+			&captcha_failure();
 			agi(googletts.agi,"Sequence incorrect!",${LANG});
 			System(echo "Fraud detection captcha failure" | mail -s "Captcha Failure from ${USERNAME}@${DOMAIN}" NOTIFICATION_EMAIL); 
 			verify_return=false;

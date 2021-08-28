@@ -201,10 +201,10 @@ route[initial] {
         $acc_extra(UA)=$ua;
         do_accounting("db|log", "failed");
         $dlg_val(key)=$avp(username)+$avp(domain);
+        record_route();
         route(check_for_fraud);
         exit;
     }
-    record_route(); 
 }
 
 ##Main routine to check for fraud
@@ -248,13 +248,24 @@ route[check_for_fraud] {
                         xlog("L_INFO","Check ip report from cache score=$var(abuse), country=$var(incountry) ");
                 }
 
-                if($(var(abuse){s.int})>=25) {
+                if($(var(abuse){s.int})>=5) {
                         xlog("L_INFO","Fraud Detected: IP Blacklisted $avp(context),f=$fu, r=$ru, ua=$ua");
                         $acc_extra(REASON)="IP Blacklisted";
                         t_reply(603,"Declined");
                         exit;
                 }
 
+        }
+
+        #Step 2a - Check for captcha_failures 
+        if(avp_db_query("select count(*) from captcha_failure_events where
+        username='$avp(username)' and domain='$avp(domain)' and NOW()<date_add(dt,INTERVAL 1 HOUR)","$avp(captcha_failures)")){
+                xlog("L_INFO","Too many captcha failures, $avp(username), $avp(domain)");
+                $acc_extra(REASON)="Too many captcha failures";
+                if($avp(captcha_failures)>3) {
+                        t_reply(603,"Declined");
+                        exit;
+                }
         }
 
         #Step 3 - Check for too may calls from A to B in a short period of time
@@ -316,7 +327,7 @@ route[check_for_fraud] {
         # Step 6  Check for destination country (Easy)
         xlog("L_INFO","Destination countries authorized $avp(destination_countries)");
         
-        #Find the destionation country based on the prefix
+        #Find the destination country based on the prefix
         if(do_routing(99999,"C",,$avp(rule_attrs))) {
                 #Country on $avp(rule_attrs)
                 xlog("L_INFO","Prefix found $avp(dr_prefix),$avp(rule_attrs), $avp(destination_countries)");
@@ -329,7 +340,7 @@ route[check_for_fraud] {
                         exit;
                 }
                 
-                if($avp(destination_countries)=~$avp(rule_attrs)) {
+                if($avp(rule_attrs)=~$avp(destination_countries) || $avp(rule_attrs)=~"DESTINATION_COUNTRIES_WHITELIST") {
                         xlog("L_INFO","Destination country Authorized: $avp(rule_attrs), $avp(username)@$avp(domain), f=$fu, r=$ru, ua=$ua");
                 } else {
                         $du="sip:PRIVATE_IP:60101";
@@ -492,6 +503,7 @@ route[preadmission] {
                 if(is_present_hf("X-Asterisk_HangupCause")) {
                        if($hdr(X-Asterisk_HangupCauseCode)=="21"){
                                #Store fail attempts
+                               xlog("L_INFO","Hangup Cause 21 save $fu counter_$dlg_val(key)");
                                cache_add("local","counter_$dlg_val(key)",1,$avp(CACHE_BLOCK_TIME));
                        }      
                 }

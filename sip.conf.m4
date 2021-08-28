@@ -10,6 +10,7 @@ externip=PUBLIC_IP
 localnet=172.16.0.0/255.255.240.0
 localnet=192.168.0.0/255.255.0.0
 localnet=10.0.0.0/255.0.0.0
+rtptimeout=5
 
 [sipserver]
 username=sipserver@PUBLIC_IP

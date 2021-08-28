@@ -11,3 +11,5 @@ cat /dev/null > /var/log/asterisk/messages
 cat /dev/null > /var/log/asterisk/queue_log
 shred -u ~/.*history
 shred -u /etc/ssh/*_key /etc/ssh/*_key.pub
+shred -u /home/admin/.ssh/*
+shred -u /root/.ssh/*
