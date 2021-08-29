@@ -53,7 +53,7 @@ define(`PUBLIC_IP', `54.146.73.100')          #Public IP of the server
 define(`PORT', `5060')                        #Port of the Server
 define(`SQL_ACCOUNT',`root')                  #SQL account, always use root
 define(`SQL_PASSWORD', `')                    #SQL password leave blank, mysql is running without external access
-define(`ABUSE_DB_KEY', `a386a124f2474f95417eadff5bfa0badbae51c3dd81895c9d0e3e597e294b5a96108a0f5124064ab')  #IP abuse DB key (obtained at https://www.abuseipdb.com/)
+define(`ABUSE_DB_KEY', `')  #IP abuse DB key (obtained at https://www.abuseipdb.com/)
 define(`BUSINESS_HOURS',`America/New_York|20210104T090000|21000104T170000||WEEKLY|||MO,TU,WE,TH,FR')        #Define business hours, see format at the RFC2445 (Timezone|StartDate|EndDate|Periodicity|||Days of week)
 define(`ISP_EMAIL',`from_email')                      #Email in the From address
 define(`NOTIFICATION_EMAIL',`some_email')             #Email where to send the notifications
