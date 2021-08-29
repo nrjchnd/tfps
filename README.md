@@ -34,7 +34,7 @@ The installation is made using SSH. Please use ssh or putty to access your insta
 Deploy the database to MySQL 
 
 ```
-sudo mysql < schema.db
+sudo mysql < fps.sql
 ```
 
 # Configure the system by editing the file defines.m4, pay attention to the backticks. Use nano or vi to edit the file 
