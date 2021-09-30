@@ -3,6 +3,16 @@ Telephony Fraud Prevention System
 
 <img src="https://user-images.githubusercontent.com/4958202/129224574-0f294ebd-3e48-4a19-83e7-fa09529f576c.jpg" width="250">
 
+# Availability
+
+This product is available as an AWS AMI with technical support
+
+![image](https://user-images.githubusercontent.com/4958202/135533852-5d3bdb71-31c5-4d05-801b-baeff084a04b.png)
+
+https://aws.amazon.com/marketplace/pp/prodview-yug5okdjyzjgu
+
+If you prefer you can use the open source version at your own risk.
+
 # Description
 
 This project is an effective real time system to block Internet Revenue Share Fraud in SIP networks. It is based in blacklists and change analysis. We have discarded artificial inteligence due to the lagging response for fraud. I have provided instructions for Asterisk and FreePBX, consult us to connect other systems. 
