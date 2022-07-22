@@ -53,6 +53,7 @@ Go to the directory below
 
 ```
 cd /usr/src/tfps
+cp defines.m4.example defines.m4
 vi defines.m4
 ``` 
 
