@@ -23,6 +23,8 @@ Please do not use this project unless you know exactly what you are doing or use
 
 This project was created to run in AWS behind a firewall. The only system with access to this server should be the softswitch or PBX. 
 
+If you are running in AWS, please allow the UDP ports 5060 from your SIP server and 10000-20000 from any address. 
+
 *** PLEASE DO NOT INSTALL THE SYSTEM WITHOUT A FIREWALL, THERE IS NO AUTHENTICATION BY DESIGN ***
 
 # Requirements
