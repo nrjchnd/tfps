@@ -6,7 +6,7 @@ define(`SQL_ACCOUNT',`root')
 define(`SQL_PASSWORD', `')
 define(`ABUSE_DB_KEY', `')
 define(`BUSINESS_HOURS',`America/New_York|20210104T090000|21000104T170000||WEEKLY|||MO,TU,WE,TH,FR')
-define(`AUTHORIZE_METHOD',`503')
+define(`AUTHORIZE_METHOD',`302')
 define(`VERIFICATION_METHOD',`CAPTCHA')
 define(`PIN',`6578')
 define(`MAX_CAPTCHAATTEMPTS',`3')               #Max failed capctha_attempts

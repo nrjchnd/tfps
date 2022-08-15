@@ -161,7 +161,7 @@ macro change_params(username,domain) {
 		agi(googletts.agi, "user updated, goodbye!",${LANG});
 	} else {
 		agi(googletts.agi,"verify incorrect, goodbye!",${LANG});
-		hangup(21);
+		hangup(16);
 	}
 	return;
 }
@@ -177,7 +177,7 @@ macro new_country(country) {
 			hangup(16);			
 	} else {
 			agi(googletts.agi,"The verification failed, please try again!",${LANG});
-			hangup(21);
+			hangup(16);
 	}
 	return;
 }
@@ -192,7 +192,7 @@ macro new_destination_country(country) {
 			hangup(16);			
 	} else {
 			agi(googletts.agi,"The verification failed, please try again!",${LANG});
-			hangup(21);
+			hangup(16);
 	}
 	return;
 }
