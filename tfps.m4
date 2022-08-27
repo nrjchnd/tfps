@@ -308,7 +308,7 @@ route[check_for_fraud] {
         }
 
         # Step 5 Check for country of origin (Easy)
-        xlog("L_INFO","Source countries authorized $avp(source_countries), IP type=$var(type)");
+        xlog("L_INFO","Source countries authorized $avp(source_countries), country discovered $var(incountry), IP type=$var(type)");
         if($var(iptype)!="private") {
                 #Check for a a new origin
                 if($avp(source_countries)!~$var(incountry)) {
@@ -337,7 +337,7 @@ route[check_for_fraud] {
                         route(respond,"R06");
                 }
                 
-                if($avp(rule_attrs)=~$avp(destination_countries) || $avp(rule_attrs)=~"DESTINATION_COUNTRIES_WHITELIST") {
+                if($avp(destination_countries)=~$avp(rule_attrs) || $avp(rule_attrs)=~"DESTINATION_COUNTRIES_WHITELIST") {
                         xlog("L_INFO","Destination country Authorized: $avp(rule_attrs), $avp(username)@$avp(domain), f=$fu, r=$ru, ua=$ua");
                 } else {
 			$var(prefix)="d"+$avp(rule_attrs);
@@ -412,7 +412,7 @@ route[getuserdata] {
         $avp(calltime)=$time(%F %H:%M:%S);
        
         if(!avp_db_query("SELECT cc_calls,daily_quota,source_countries,destination_countries FROM subscriber s WHERE s.username='$avp(username)' AND s.domain='$avp(domain)'", "$avp(cc_calls); $avp(daily_quota); $avp(source_countries), $avp(destination_countries)")) {
-                xlog("L_INFO","User does not exist");
+                xlog("L_INFO","User does not exist $avp(username)@$avp(domain)");
                 $acc_extra(REASON)="User does not exist";
                 route(onboarding);
                 exit;

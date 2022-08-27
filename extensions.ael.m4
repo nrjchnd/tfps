@@ -52,7 +52,6 @@ context onboarding {
 		playback(beep);
 		read(daily_quota,,2);
 		agi(googletts.agi,"Please do not disconnect while I adjust your parameters!",${LANG},any);
-		&getuserdomain();
 		Noop(Username = ${USERNAME}, domain=${DOMAIN});
 		&setuserdomain();
 		System(echo "New user created" | mail -s "User ${USERNAME}@${DOMAIN} from ${SOURCEIP} created with ${cc_calls} concurrent calls and daily quota of ${daily_quota}" NOTIFICATION_EMAIL);
@@ -81,13 +80,13 @@ macro getuserdomain() {
 		SET(SOURCEIP=${SIP_HEADER(P-Source)});
 	}
 	
-	if("${SIP_HEADER(X-tfps)}"="") {
+	if(${ISNULL(tfps)}) {
 			Set(USERNAME=${CALLERID(num)});
 			Set(FROM=${SIP_HEADER(From)});
 			Set(DOMAIN=${CUT(CUT(FROM,@,2),\>,1)});
 	} else {
-			USERNAME=${CUT(SIP_HEADER(X-tfps),@,1)};
-			DOMAIN=${CUT(SIP_HEADER(X-tfps),@,2)};
+		    Set(USERNAME=${CUT(SIP_HEADER(X-tfps),@,1)});
+            Set(DOMAIN=${CUT(SIP_HEADER(X-tfps),@,2)});
 	}
 	return;
 }
@@ -187,7 +186,7 @@ macro new_destination_country(country) {
 	&verify();
 	if(${verify_return}==true) {
 			&setdstcountry(${country});
-			System(echo "New source country added" | mail -s "User ${USERNAME}@${DOMAIN} from ${SOURCEIP} has added ${country} to its destinations" flavio@voffice.com.br);						
+			System(echo "New source country added" | mail -s "User ${USERNAME}@${DOMAIN} from ${SOURCEIP} has added ${country} to its destinations" NOTIFICATION_EMAIL);						
 			agi(googletts.agi,"Destination country added to the database, please redial to complete your call",${LANG});
 			hangup(16);			
 	} else {
