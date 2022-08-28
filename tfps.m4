@@ -118,6 +118,10 @@ route{
     ## Other checks, cancel, retransmissions, preloaded routes and rr
     route(cancel);
 
+    ## Route Sequential Requests
+    route(sequential);
+
+
     # Initial requests handler
     route(initial);
 
@@ -157,8 +161,8 @@ route[initial] {
     
     # Old Standard, all parameters in different headers
         if(is_present_hf("X-tfps")){
-                $avp(username)=$(hdr(X-tfps){s.select,0,;});
-                $avp(domain)=$(hdr(X-tfps){s.select,1,;});
+                $avp(username)=$(hdr(X-tfps){s.select,0,@});
+                $avp(domain)=$(hdr(X-tfps){s.select,1,@});
         }
         
         #Get source IP
@@ -221,8 +225,7 @@ route[check_for_fraud] {
                         xlog("L_INFO", "Fraud Detected: User Agent Blacklisted, f=$fu, r=$ru, ua=$ua");
                         #Drop the request, do not even send an answer to avoid the scan
                         $acc_extra(REASON)="User Agent Blacklisted";
-                        t_reply(603,"Declined");
-                        exit;
+                        route(respond,"R01");
                 }
         }
         
@@ -251,20 +254,18 @@ route[check_for_fraud] {
                 if($(var(abuse){s.int})>=5) {
                         xlog("L_INFO","Fraud Detected: IP Blacklisted $avp(context),f=$fu, r=$ru, ua=$ua");
                         $acc_extra(REASON)="IP Blacklisted";
-                        t_reply(603,"Declined");
-                        exit;
+                        route(respond,"R02");
                 }
 
         }
 
         #Step 2a - Check for captcha_failures 
         if(avp_db_query("select count(*) from captcha_failure_events where
-        username='$avp(username)' and domain='$avp(domain)' and NOW()<date_add(dt,INTERVAL 1 HOUR)","$avp(captcha_failures)")){
-                xlog("L_INFO","Too many captcha failures, $avp(username), $avp(domain)");
-                $acc_extra(REASON)="Too many captcha failures";
-                if($avp(captcha_failures)>3) {
-                        t_reply(603,"Declined");
-                        exit;
+        username='$avp(username)' and domain='$avp(domain)' and NOW()<date_add(dt,INTERVAL 15 MINUTE)","$avp(captcha_failures)")){
+                if($avp(captcha_failures)>10) {
+                	xlog("L_INFO","Too many captcha failures, $avp(username), $avp(domain)");
+                	$acc_extra(REASON)="Too many captcha failures";
+                        route(respond,"R03");
                 }
         }
 
@@ -273,8 +274,7 @@ route[check_for_fraud] {
         if(cache_fetch("local", "block_$fU$rU", $avp(blockattempts))){
                 xlog("L_INFO","Blocked for 1 hour in a short period of time $var(currentattempts)/$avp(maxattempts) in $avp(timeattempts)");
                 $acc_extra(REASON)="Too many calls from same A-B in a short period of time";
-                t_reply(603, "Declined");
-                exit;
+                route(respond,"R04");
         }
 
         if($(avp(maxattempts){s.int})>0) {
@@ -287,8 +287,7 @@ route[check_for_fraud] {
                         $acc_extra(REASON)="Too many calls from same A-B in a short period of time";
                         #blockdestination for 1 hour
                         cache_store("local","block_$fU$rU","1",3600);
-                        t_reply(603, "Declined");
-                        exit;
+                        route(respond,"R05");
                 } else {
                         cache_store("local","same_$fU$rU","$var(currentattempts)",$avp(timeattempts));
                 }
@@ -304,13 +303,12 @@ route[check_for_fraud] {
         if(cache_counter_fetch("local","counter_$avp(username)$avp(domain)",$var(failcounter))) {
                 if($var(failcounter) > MAX_CAPTCHAATTEMPTS ){
                         xlog("L_INFO","Too many captcha failures $avp(username) $avp(domain) blocked for one hour");
-                        t_reply(603,"Declined");
-                        exit;
+                        route(respond,"R06");
                 }
         }
 
         # Step 5 Check for country of origin (Easy)
-        xlog("L_INFO","Source countries authorized $avp(source_countries), IP type=$var(type)");
+        xlog("L_INFO","Source countries authorized $avp(source_countries), country discovered $var(incountry), IP type=$var(type)");
         if($var(iptype)!="private") {
                 #Check for a a new origin
                 if($avp(source_countries)!~$var(incountry)) {
@@ -336,13 +334,14 @@ route[check_for_fraud] {
                 if($avp(rule_attrs)=~"DESTINATION_COUNTRIES_BLACKLIST") {
                         xlog("L_INFO","Possible Fraud Detected: Destination Country in the Blacklist: $avp(rule_attrs), f=$fu, r=$ru, ua=$ua");
                         $acc_extra(REASON)="Destination Country Blacklisted";
-                        t_reply(603,"Declined");
-                        exit;
+                        route(respond,"R06");
                 }
                 
-                if($avp(rule_attrs)=~$avp(destination_countries) || $avp(rule_attrs)=~"DESTINATION_COUNTRIES_WHITELIST") {
+                if($avp(destination_countries)=~$avp(rule_attrs) || $avp(rule_attrs)=~"DESTINATION_COUNTRIES_WHITELIST") {
                         xlog("L_INFO","Destination country Authorized: $avp(rule_attrs), $avp(username)@$avp(domain), f=$fu, r=$ru, ua=$ua");
                 } else {
+			$var(prefix)="d"+$avp(rule_attrs);
+                        prefix($var(prefix));
                         $du="sip:PRIVATE_IP:60101";
                         #Relay to media server
                         t_relay();
@@ -352,8 +351,7 @@ route[check_for_fraud] {
         } else {
                 xlog("L_WARN","International Prefix not found, f=$fu, r=$ru, ua=$ua");
                 $acc_extra(REASON)="International Prefix Not Found";
-                t_reply(603, "Declined");
-                exit;
+                route(respond,"R07");
         }
         
         
@@ -364,8 +362,7 @@ route[check_for_fraud] {
                 if($(avp(simcalls){s.int})>$(avp(callsonhours){s.int})) {
                         xlog("L_INFO","Fraud Detected: Too many simultaneous calls in normal hours id=$avp(security),$avp(simcalls),$avp(callsonhours)");
                         $acc_extra(REASON)="Too many calls on normal hours";
-                        t_reply(603, "Declined");
-                        exit;
+                        route(respond,"R08");
                 }
                 #Check Daily Quota Regular Hours
                 cache_add("local", "quota_$avp(accountcode)",1,86400);
@@ -373,16 +370,14 @@ route[check_for_fraud] {
                 if($(avp(totalcalls){s.int}) > $(avp(quotaonhours){s.int})) {
                         xlog("L_INFO","Fraud Detected: Call quota exceeded onhours id=$avp(security), $avp(quotaonhours)");
                         $acc_extra(REASON)="Quota exceeeded on normal hours";
-                        t_reply(603, "Declined");
-                        exit;
+                        route(respond,"R09");
                 }
         } else {
                 $avp(simcalls)=$(hdr(P-Calls){s.int});
                 if($(avp(simcalls){s.int})>$(avp(callsoffhours){s.int})) {
                         xlog("L_INFO","Fraud Detected: Too many simultaneous calls offhours id=$avp(security), $avp(simcalls), $avp(callsoffhours)");
                         $acc_extra(REASON)="Too many calls off hours";
-                        t_reply(603, "Declined");
-                        exit;
+                        route(respond,"R10");
                 }
 
                 #Check Daily Quota Off-Hours
@@ -392,8 +387,7 @@ route[check_for_fraud] {
                         xlog("L_INFO","Fraud Detected: Calls exceeded quota off hours id=$avp(security), quota=$avp(quotaoffhours)");
                         $acc_extra(REASON)="Quota exceeded off hours";
                         $avp(severity)=3;
-                        t_reply(603, "Declined");
-                        exit;
+                        route(respond,"R11");
                 }
         }
 
@@ -418,7 +412,7 @@ route[getuserdata] {
         $avp(calltime)=$time(%F %H:%M:%S);
        
         if(!avp_db_query("SELECT cc_calls,daily_quota,source_countries,destination_countries FROM subscriber s WHERE s.username='$avp(username)' AND s.domain='$avp(domain)'", "$avp(cc_calls); $avp(daily_quota); $avp(source_countries), $avp(destination_countries)")) {
-                xlog("L_INFO","User does not exist");
+                xlog("L_INFO","User does not exist $avp(username)@$avp(domain)");
                 $acc_extra(REASON)="User does not exist";
                 route(onboarding);
                 exit;
@@ -445,8 +439,14 @@ route[handle_authorized] {
         $rd=$fd;
         $ru="sip:"+$avp(result)+$rU+"@"+$rd;
         $acc_extra(REASON)="Call Authorized";
-        t_reply(302, "Moved Temporarily");
-        exit;
+        $var(authorize)=AUTHORIZE_METHOD;
+        if($var(authorize)==503) {
+                t_reply(503, "Service Unavailable");
+                exit;
+        } else {
+                t_reply(302, "Moved Temporarily");
+                exit;
+        }
 }
 
 route[email] {
@@ -459,26 +459,26 @@ route[email] {
         cache_store("local","timer_$avp(accountcode)","1",3600);
 
         if($avp(result)=="R08") {
-                xlog("L_INFO","Email enviado para $avp(email) R08");
+                xlog("L_INFO","Email sent to  $avp(email) R08");
                 exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS Real Time Alert] Simultanous calls off hours exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Simultanous calls off hours exceeded from $avp(sourceip), dialed number $var(original)" -S from:tfps@tfps.co $avp(email) -c tfps@tfps.co');
         }
 
         if($avp(result)=="R09") {
-                xlog("L_INFO","Email enviado para $avp(email) R09");
+                xlog("L_INFO","Email sent to $avp(email) R09");
                 exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS Real Time Alert] Call quota off hours exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Call quota off hours exceeded from $avp(sourceip), dialed number $var(original)" -S from:tfps@tfps.co $avp(email) -c tfps@tfps.co');
         }
 
         if($avp(result)=="R10") {
-                xlog("L_INFO","Email enviado para $avp(email) R10");
+                xlog("L_INFO","Email sent to $avp(email) R10");
                 exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS Real Time Alert] Simultaneous calls exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Simultaneous calls exceeded from $avp(sourceip), dialed number $var(original)" -S from:tfps@tfps.co $avp(email) -c tfps@tfps.co');
         }
 
         if($avp(result)=="R11") {
-                xlog("L_INFO","Email enviado para $avp(email) R11");
+                xlog("L_INFO","Email sent to $avp(email) R11");
                 exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS Real Time Alert] Call quota exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Call quota exceeded from $avp(sourceip), dialed number $var(original)" -S from:tfps@tfps.co $avp(email) -c tfps@tfps.co');
         }
     }
-    xlog("L_INFO","Tempo: $avp(calltime) \n");
+    xlog("L_INFO","Time: $avp(calltime) \n");
     xlog("L_INFO","Email sent to $avp(email)");
     
 }
@@ -523,13 +523,7 @@ route[preadmission] {
         exit;
     }
 
-    ##Discard ACKs
-    if(is_method("ACK")){
-        t_check_trans();
-        exit;
-    }
-
-    if(!is_method("INVITE")) {
+    if(!is_method("INVITE|ACK|BYE|CANCEL")) {
         sl_send_reply(405,"Method not supported");
         exit;
     }
@@ -558,36 +552,31 @@ route[preadmission] {
     if($au =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60) && $au!=null") {
         xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! au=$au");
         $acc_extra(REASON)="SQL injection";
-        t_reply(603,"Declined");
-        exit;
+        route(respond,"R12");
     }
 
     if($ru =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60) && $au!=null") {
         xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! au=$au");
         $acc_extra(REASON)="SQL injection";
-        t_reply(603,"Declined");
-        exit;
+        route(respond,"R12");
     }
 
     if($(ct.fields(uri){uri.user}) =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
         xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! ct=$ct");
         $acc_extra(REASON)="SQL injection";
-        t_reply(603,"Declined");
-        exit;
+        route(respond,"R12");
     }
 
     if($(ct.fields(uri){uri.host}) =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
         xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! ct=$ct");
         $acc_extra(REASON)="SQL injection";
-        t_reply(603,"Declined");
-        exit;
+        route(respond,"R12");
     }
 
     if($fu =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
         xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! ct=$ct");
         $acc_extra(REASON)="SQL injection";
-        t_reply(603,"Declined");
-        exit;
+        route(respond,"R12");
     }
 }
 
@@ -617,3 +606,63 @@ route[verify_stir_shaken] {
                 exit;
         }
 }
+
+route[sequential] {
+            if (has_totag()) {
+
+                xlog("L_INFO","Sequential call $rm r=$ru rd=$rd, du=$du, dd=$dd");
+
+                # handle hop-by-hop ACK (no routing required)
+                if ( is_method("ACK") && t_check_trans() ) {
+                        if($rd=="PUBLIC_IP") $rd="PRIVATE_IP";
+                        t_relay();
+                        exit;
+                }
+
+                # sequential request within a dialog should
+                # take the path determined by record-routing
+                if ( !loose_route() ) {
+                        # we do record-routing for all our traffic, so we should not
+                        # receive any sequential requests without Route hdr.
+                        send_reply(404,"Not here");
+                        exit;
+                }
+
+                if (is_method("BYE")) {
+                        # do accounting even if the transaction fails
+                        do_accounting("log","failed");
+                }
+
+                # route it out to whatever destination was set by loose_route()
+                # in $du (destination URI).
+                if($rd=="PUBLIC_IP") $rd="PRIVATE_IP";
+                t_relay();
+                exit;
+        }
+
+        # CANCEL processing
+        if (is_method("CANCEL")) {
+                if (t_check_trans())
+                        t_relay();
+                exit;
+        }
+
+}
+
+## Send response back to the user according to the method
+## 503 denies calls sending 603 and authorize sending 503
+## 302 denies calls redirecting to A00, denies calls redirecting to RXX (default method)
+route[respond] {
+        $var(authorize)=AUTHORIZE_METHOD;
+        if($var(authorize)==503) {
+                t_reply(603,"Declined");
+                exit;
+        } else {
+                $rU=$param(1);
+                t_reply(302,"Moved Temporarily");
+                exit;
+        }
+}
+
+
+

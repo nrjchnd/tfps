@@ -3,6 +3,16 @@ Telephony Fraud Prevention System
 
 <img src="https://user-images.githubusercontent.com/4958202/129224574-0f294ebd-3e48-4a19-83e7-fa09529f576c.jpg" width="250">
 
+# Availability
+
+This product is available as an AWS AMI with technical support
+
+![image](https://user-images.githubusercontent.com/4958202/135533852-5d3bdb71-31c5-4d05-801b-baeff084a04b.png)
+
+https://aws.amazon.com/marketplace/pp/prodview-yug5okdjyzjgu
+
+If you prefer you can use the open source version at your own risk.
+
 # Description
 
 This project is an effective real time system to block Internet Revenue Share Fraud in SIP networks. It is based in blacklists and change analysis. We have discarded artificial inteligence due to the lagging response for fraud. I have provided instructions for Asterisk and FreePBX, consult us to connect other systems. 
@@ -12,6 +22,8 @@ Please do not use this project unless you know exactly what you are doing or use
 # Security Requirements
 
 This project was created to run in AWS behind a firewall. The only system with access to this server should be the softswitch or PBX. 
+
+If you are running in AWS, please allow the UDP ports 5060 from your SIP server and 10000-20000 from any address. 
 
 *** PLEASE DO NOT INSTALL THE SYSTEM WITHOUT A FIREWALL, THERE IS NO AUTHENTICATION BY DESIGN ***
 
@@ -25,7 +37,7 @@ Asterisk TTS - https://zaf.github.io/asterisk-googletts/\
 msmtp - smtp client\
 mailutils - email client\
 m4 - GNU m4 preprocessor\
-ipabusedb key
+ipabusedb key (https://www.abuseipdb.com/)
 
 # Installation
 
@@ -34,7 +46,7 @@ The installation is made using SSH. Please use ssh or putty to access your insta
 Deploy the database to MySQL 
 
 ```
-sudo mysql < schema.db
+sudo mysql < fps.sql
 ```
 
 # Configure the system by editing the file defines.m4, pay attention to the backticks. Use nano or vi to edit the file 
@@ -43,6 +55,7 @@ Go to the directory below
 
 ```
 cd /usr/src/tfps
+cp defines.m4.example defines.m4
 vi defines.m4
 ``` 
 
