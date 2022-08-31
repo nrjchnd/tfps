@@ -376,6 +376,7 @@ route[check_captcha] {
         if(cache_counter_fetch("local","counter_$avp(username)$avp(domain)",$var(failcounter))) {
                 if($var(failcounter) > MAX_CAPTCHAATTEMPTS ){
                         xlog("L_INFO","Too many captcha failures $avp(username) $avp(domain) blocked for one hour");
+                        $acc_extra(REASON)="Captcha Failure";
                         route(respond,"R06");
                 }
         }

@@ -38,6 +38,7 @@ msmtp - smtp client\
 mailutils - email client\
 m4 - GNU m4 preprocessor\
 ipabusedb key (https://www.abuseipdb.com/)
+opensips control panel
 
 # Installation
 
@@ -61,27 +62,35 @@ vi defines.m4
 
 ```
 divert(-1)
-define(`PRIVATE_IP', `172.31.53.39')          #Private IP of the server
-define(`PUBLIC_IP', `54.146.73.100')          #Public IP of the server
-define(`PORT', `5060')                        #Port of the Server
-define(`SQL_ACCOUNT',`root')                  #SQL account, always use root
-define(`SQL_PASSWORD', `')                    #SQL password leave blank, mysql is running without external access
-define(`ABUSE_DB_KEY', `')  #IP abuse DB key (obtained at https://www.abuseipdb.com/)
-define(`BUSINESS_HOURS',`America/New_York|20210104T090000|21000104T170000||WEEKLY|||MO,TU,WE,TH,FR')        #Define business hours, see format at the RFC2445 (Timezone|StartDate|EndDate|Periodicity|||Days of week)
-define(`ISP_EMAIL',`from_email')                      #Email in the From address
-define(`NOTIFICATION_EMAIL',`some_email')             #Email where to send the notifications
-define(`AUTHORIZE_METHOD',`503')                      #503 - (Use 503/603 to authorize/deny calls), or 302 (Send 302 Redirect) 
-define(`VERIFICATION_METHOD',`CAPTCHA')               #CAPTCHA/PIN (CAPTCHA, simpler for the user, PIN, safer, but have to be distributed)
-define(`PIN',`6578')                                  #PIN to authorize calls if the method is PIN
+define(`PRIVATE_IP', `172.31.92.20')
+define(`PUBLIC_IP', `3.95.189.100')
+define(`PORT', `5060')
+define(`SQL_ACCOUNT',`root')
+define(`SQL_PASSWORD', `')
+define(`ABUSE_DB_KEY', `a386a124f2474f95417eadff5bfa0badbae51c3dd81895c9d0e3e597e294b5a96108a0f5124064ab')
+define(`BUSINESS_HOURS',`America/New_York|20210104T090000|21000104T170000||WEEKLY|||MO,TU,WE,TH,FR')
+define(`AUTHORIZE_METHOD',`302')
+define(`VERIFICATION_METHOD',`CAPTCHA')
+define(`PIN',`6578')
 define(`MAX_CAPTCHAATTEMPTS',`3')               #Max failed capctha_attempts
 define(`CACHE_BLOCK_TIME',`3600')               #Block failed captcha for this time
 define(`MAX_CONCURRENT',`5')                    #Maximum number of concurrent calls
-define(`DESTINATION_COUNTRIES_BLACKLIST',`CU,LV,TN,DZ,MA,AF,IQ,LK,LH,MV,TD,GN,EE,MG')  #PRISM TOP FRAUD DESTINATIONS, DEFAULT LIST OF COUNTRIES BLOCKED
-define(`SMTP_HOST',`some_host.some_domain')            #EMAIL ACCOUNT CONFIGURATION
-define(`SMTP_EMAIL',`some_user@some_domain')     #EMAIL ACCOUNT CONFIGURATION
-define(`SMTP_ACCOUNT','some_account')           #EMAIL ACCOUNT CONFIGURATION
-define(`SMTP_USER',`some_user')                 #EMAIL ACCOUNT CONFIGURATION
-define(`SMTP_PASSWORD',`some_password')         #EMAIL ACCOUNT CONFIGURATION
+define(`DESTINATION_COUNTRIES_BLACKLIST',`CU,LV,TN,DZ,MA,AF,IQ,LK,LH,MV,TD,GN,EE,MG')  #PRISM TOP FRAUD DESTINATIONS
+define(`PIN',`6578')
+define(`NOTIFICATION_EMAIL',`flavio@voffice.com.br')
+define(`SMTP_HOST',`smtp.gmail.com')
+define(`SMTP_EMAIL',`wehostvoip@gmail.com')
+define(`SMTP_ACCOUNT',`gmail')
+define(`SMTP_USER',`wehostvoip')
+define(`SMTP_PASSWORD',`P1p1l1n1#')
+define(`SMTP_FROM',`cloud@wehostvoip.io')
+define(`DEFAULT_CONCURRENT_CALLS',`2')
+define(`DEFAULT_CONCURRENT_CALLS_OFF',`0')
+define(`DEFAULT_QUOTA',`10')
+define(`DEFAULT_QUOTA_OFF',`2')
+define(`DEFAULT_SOURCE_COUNTRIES',`US')
+define(`DEFAULT_DESTINATION_COUNTRIES',`US')
+divert(0)
 ```
 
 After filling the file defines.m4 (you will need an api key for ipabusedb https://www.abuseipdb.com/) with your own definitions, then run
@@ -96,6 +105,20 @@ Restart OpenSIPS and Asterisk
 systemctl restart opensips
 systemctl restart asterisk
 ```
+
+# Control panel installation
+Follow all the instructions to install opensips control panel 9.3.2. After CP is running copy the customizations
+
+```
+copy /home/admin/tfps/opensips-cp /var/www/html
+chown www-data:www-data /var/www/html -R
+````
+
+To access the control panel use your browser to access http://<ip_address>/cp
+
+The username and password are admin:##fraudprevention##
+
+## Please change immediately the password and restrict access to the control panel to an specific address ##
 
 # Client Installation
 
