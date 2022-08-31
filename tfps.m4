@@ -3,7 +3,7 @@
 # Author: Flavio E. Goncalves
 # Date: 07/30/2021
 # Sip TFPS
-# Version: 3
+# Version: 3.0.5
 ##
 
 ####### Global Parameters #########
@@ -67,8 +67,13 @@ modparam("acc", "report_cancels", 0)
 modparam("acc", "detect_direction", 0)
 modparam("acc", "log_facility", "LOG_LOCAL1")
 modparam("acc", "db_url", "mysql://root:SQL_PASSWORD@localhost/fps")
-modparam("acc", "extra_fields", "db: REASON->block_reason; SOURCE_IP->source_ip; FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence")
-modparam("acc", "extra_fields", "log: REASON->block_reason; SOURCE_IP->source_ip; FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence")
+modparam("acc", "extra_fields", "db: REASON->block_reason; SOURCE_IP->source_ip; FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence; ACCOUNTCOCDE->accountcode; RESPONSE->response")
+modparam("acc", "extra_fields", "log: REASON->block_reason; SOURCE_IP->source_ip; FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence; ACCOUNTCODE->accountcode; RESPONSE->response")
+
+loadmodule "permissions.so"
+# ---- permissions params ----
+modparam("permissions", "db_url", "mysql://root:SQL_PASSWORD@localhost/fps")
+
 
 # ----- avpops params ----
 loadmodule "avpops.so"
@@ -93,6 +98,11 @@ loadmodule "drouting.so"
 modparam("drouting","db_url","mysql://root:SQL_PASSWORD@localhost/fps")
 modparam("drouting", "rule_prefix_avp", '$avp(dr_prefix)')
 
+# ----- statistics -----
+loadmodule "statistics.so"
+modparam("statistics", "variable", "calls_approved")
+modparam("statistics", "variable", "calls_rejected")
+
 ####### Extra modules section ########
 loadmodule "db_mysql.so"
 loadmodule "textops.so"
@@ -109,6 +119,7 @@ loadmodule "dialog.so"
 
 loadmodule "proto_udp.so"
 
+
 ####### Routing Logic ########
 route{
 
@@ -120,7 +131,6 @@ route{
 
     ## Route Sequential Requests
     route(sequential);
-
 
     # Initial requests handler
     route(initial);
@@ -146,11 +156,11 @@ route[initial] {
     #Default, get from the From header
     $avp(username)=$fU;
     $avp(domain)=$fd;
+    $avp(sourceip)=$si;
 
     if(is_present_hf("P-tfps")){
-    
-    # New standard, all parameters in a single header
 
+        # New standard, all parameters in a single header
         $avp(username)=$(hdr(P-tfps){s.select,0,;});
         $avp(domain)=$(hdr(P-tfps){s.select,1,;});
         $avp(sourceip)=$(hdr(P-tfps){s.select,2,;});
@@ -159,7 +169,7 @@ route[initial] {
     
     } else {
     
-    # Old Standard, all parameters in different headers
+        # Old Standard, all parameters in different headers
         if(is_present_hf("X-tfps")){
                 $avp(username)=$(hdr(X-tfps){s.select,0,@});
                 $avp(domain)=$(hdr(X-tfps){s.select,1,@});
@@ -203,6 +213,7 @@ route[initial] {
         $acc_extra(FROM)=$fu;
         $acc_extra(TO)=$ru;
         $acc_extra(UA)=$ua;
+        $acc_extra(ACCOUNTCODE)=$avp(username)+"@"+$avp(domain);
         do_accounting("db|log", "failed");
         $dlg_val(key)=$avp(username)+$avp(domain);
         record_route();
@@ -218,8 +229,67 @@ route[check_for_fraud] {
 
         #By default all calls are autorized
         $avp(result):="A00";
+        $acc_extra(REASON)="Call Authorized";
 
-        # Step 1, Check for risky User Agents in the dialplan database (Easy)
+        #Check if the user agent is blacklisted
+        route(check_user_agent);
+        
+        #Check if the source IP is blacklisted at IP Abuse DB
+        route(check_ipabusedb);
+
+        #Check the private IP blacklisted
+        route(private_ip_list);
+
+        #Check if a certain number of calls from the same A to same B in a short period of time
+        route(check_ab);
+
+        #Detections ahead require user data from the database
+        route(getuserdata);
+
+        #Check if the user is blocked
+        route(check_user_block);
+
+        #Check if the user is blocked by multiple captcha failures
+        route(check_captcha);
+
+        #Check if source_country is the first
+        route(check_source_country);
+
+        #Check for destination country (Easy)
+        route(check_destination_country);
+
+        #Check traffic depending on the business hours
+        if(check_time_rec($avp(businesshours))) {
+                #Regular Hours 
+                route(check_concurrent_calls,"regular");
+                route(check_daily_quota,"regular");
+        } else {
+                route(check_concurrent_calls,"off");
+                route(check_daily_quota,"off");            
+        }
+
+        #Check the ZSCORE for abonormal detection of traffic
+        # Experimental, if you want to use it, please get in contact. From my tests, I had 100% of false positives. After all the rules it is rare to have a fraud undetected
+        # However unusual peaks in legitimate calls are frequent. 
+        #route(check_zscore);
+
+        #Requires integration with the certificate authority, please get in contact if you want to activate.
+        #route(check_stir_shaken);
+
+        #Call was accepted
+        route(handle_authorized);
+        exit;
+}
+
+# Check if the user is blocked for international calls
+route[check_user_block] {
+        if($avp(block)==1) {
+                route(respond,"R13");
+        }
+}
+
+# Check for risky User Agents in the dialplan database (Easy)
+route[check_user_agent] {
         if($ua!=null) {
                 if(dp_translate(99997, "$avp(ua)/$avp(ua)",$avp(dest))) {  
                         xlog("L_INFO", "Fraud Detected: User Agent Blacklisted, f=$fu, r=$ru, ua=$ua");
@@ -228,8 +298,11 @@ route[check_for_fraud] {
                         route(respond,"R01");
                 }
         }
-        
-        # Step 2 Check against ip abusedb
+}
+
+# Check against ip abusedb
+route[check_ipabusedb] {
+        xlog("L_INFO","Check IP abuse DB, for $avp(sourceip), type=$var(iptype) \r\n");
         if($var(iptype)!="private") {
                 #Cache results
                 if(!cache_fetch("local","score_$avp(sourceip)",$var(abuse))) {
@@ -256,20 +329,21 @@ route[check_for_fraud] {
                         $acc_extra(REASON)="IP Blacklisted";
                         route(respond,"R02");
                 }
+        }
+}
 
+#Check the IP blacklist in memory
+route[private_ip_list] {
+
+        if (check_address(0,$avp(source_ip), 0, "ANY")) {
+                $acc_extra(REASON)="IP blocked by private blacklist";
+                route(respond,"R14");
         }
 
-        #Step 2a - Check for captcha_failures 
-        if(avp_db_query("select count(*) from captcha_failure_events where
-        username='$avp(username)' and domain='$avp(domain)' and NOW()<date_add(dt,INTERVAL 15 MINUTE)","$avp(captcha_failures)")){
-                if($avp(captcha_failures)>10) {
-                	xlog("L_INFO","Too many captcha failures, $avp(username), $avp(domain)");
-                	$acc_extra(REASON)="Too many captcha failures";
-                        route(respond,"R03");
-                }
-        }
+}
 
-        #Step 3 - Check for too may calls from A to B in a short period of time
+#Check for too may calls from A to B in a short period of time
+route[check_ab] {
         #blockdestination for 1 hour
         if(cache_fetch("local", "block_$fU$rU", $avp(blockattempts))){
                 xlog("L_INFO","Blocked for 1 hour in a short period of time $var(currentattempts)/$avp(maxattempts) in $avp(timeattempts)");
@@ -287,18 +361,17 @@ route[check_for_fraud] {
                         $acc_extra(REASON)="Too many calls from same A-B in a short period of time";
                         #blockdestination for 1 hour
                         cache_store("local","block_$fU$rU","1",3600);
+                        $avp(result)="R05";
+                        route(email);
                         route(respond,"R05");
                 } else {
                         cache_store("local","same_$fU$rU","$var(currentattempts)",$avp(timeattempts));
                 }
         }
+}
 
-        #Detections ahead require user data
-        #Get user data
-        route(getuserdata);
-
-        #Step 4 - Captcha failures
-        #Check for captcha failures
+#Check for captcha failures
+route[check_captcha] {
         $var(failcounter)=0;
         if(cache_counter_fetch("local","counter_$avp(username)$avp(domain)",$var(failcounter))) {
                 if($var(failcounter) > MAX_CAPTCHAATTEMPTS ){
@@ -306,13 +379,18 @@ route[check_for_fraud] {
                         route(respond,"R06");
                 }
         }
+}
 
-        # Step 5 Check for country of origin (Easy)
+#Check for country of origin
+route[check_source_country] {
         xlog("L_INFO","Source countries authorized $avp(source_countries), country discovered $var(incountry), IP type=$var(type)");
         if($var(iptype)!="private") {
                 #Check for a a new origin
-                if($avp(source_countries)!~$var(incountry)) {
+                if($avp(source_countries)=~$var(incountry)) {
+                        xlog("L_INFO","Source country Authorized: $avp(rule_attrs), $avp(username)@$avp(domain), f=$fu, r=$ru, ua=$ua");
+                } else {        
                         #Trying to call from a new country, this requires a captcha authorization in the media server
+                        # prefix with "i" to indicate the proper action in the media server
                         $rU="i"+$var(incountry)+$rU;
                         $acc_extra(REASON)="Source country not authorized";
                         $du="sip:PRIVATE_IP:60101";
@@ -321,8 +399,10 @@ route[check_for_fraud] {
                         exit;
                 }
         }
-        
-        # Step 6  Check for destination country (Easy)
+}
+
+#Check if destination country was already added
+route[check_destination_country] {
         xlog("L_INFO","Destination countries authorized $avp(destination_countries)");
         
         #Find the destination country based on the prefix
@@ -330,7 +410,7 @@ route[check_for_fraud] {
                 #Country on $avp(rule_attrs)
                 xlog("L_INFO","Prefix found $avp(dr_prefix),$avp(rule_attrs), $avp(destination_countries)");
 
-                #Check destination Blacklisted
+                #Check destination Blacklisted (High probability of fraud) PRISM
                 if($avp(rule_attrs)=~"DESTINATION_COUNTRIES_BLACKLIST") {
                         xlog("L_INFO","Possible Fraud Detected: Destination Country in the Blacklist: $avp(rule_attrs), f=$fu, r=$ru, ua=$ua");
                         $acc_extra(REASON)="Destination Country Blacklisted";
@@ -353,46 +433,60 @@ route[check_for_fraud] {
                 $acc_extra(REASON)="International Prefix Not Found";
                 route(respond,"R07");
         }
-        
-        
-        # Step 8 Check traffic depending on the business hours
-        if(check_time_rec($avp(businesshours))) {
-                #Regular Hours
-                $avp(simcalls)=$(hdr(P-Calls){s.int});
-                if($(avp(simcalls){s.int})>$(avp(callsonhours){s.int})) {
-                        xlog("L_INFO","Fraud Detected: Too many simultaneous calls in normal hours id=$avp(security),$avp(simcalls),$avp(callsonhours)");
+}
+
+#Check concurrent calls on regular and off hours
+route[check_concurrent_calls] {
+        $avp(simcalls)=$(hdr(P-Calls){s.int});
+        if($param(1)=="regular") {
+                if($(avp(simcalls){s.int})>$(avp(cc_calls){s.int})) {
+                        xlog("L_INFO","Fraud Detected: Too many simultaneous calls in normal hours id=$avp(security),$avp(simcalls),$avp(cc_calls)");
                         $acc_extra(REASON)="Too many calls on normal hours";
-                        route(respond,"R08");
-                }
-                #Check Daily Quota Regular Hours
-                cache_add("local", "quota_$avp(accountcode)",1,86400);
-                cache_fetch("local", "quota_$avp(accountcode)", $avp(totalcalls));
-                if($(avp(totalcalls){s.int}) > $(avp(quotaonhours){s.int})) {
-                        xlog("L_INFO","Fraud Detected: Call quota exceeded onhours id=$avp(security), $avp(quotaonhours)");
-                        $acc_extra(REASON)="Quota exceeeded on normal hours";
-                        route(respond,"R09");
+                        $avp(result)="R08";
                 }
         } else {
                 $avp(simcalls)=$(hdr(P-Calls){s.int});
-                if($(avp(simcalls){s.int})>$(avp(callsoffhours){s.int})) {
-                        xlog("L_INFO","Fraud Detected: Too many simultaneous calls offhours id=$avp(security), $avp(simcalls), $avp(callsoffhours)");
+                if($(avp(simcalls){s.int})>$(avp(cc_calls_off){s.int})) {
+                        xlog("L_INFO","Fraud Detected: Too many simultaneous calls offhours id=$avp(security), $avp(simcalls), $avp(cc_calls_off)");
                         $acc_extra(REASON)="Too many calls off hours";
-                        route(respond,"R10");
+                        $avp(result)="R10";
                 }
+        }
+        route(email);
+        route(respond,$avp(result));
+}
 
+#Check the daily quota of calls
+route[check_daily_quota] {
+        if($param(1)=="regular") {
+                #Check Daily Quota Regular Hours
+                cache_add("local", "quota_$avp(accountcode)",1,86400);
+                cache_fetch("local", "quota_$avp(accountcode)", $avp(totalcalls));
+                if($(avp(totalcalls){s.int}) > $(avp(daily_quota){s.int})) {
+                        $var(prefix)="q"+$avp(rule_attrs);
+                        prefix($var(prefix));
+                        $du="sip:PRIVATE_IP:60101";
+                        #Relay to media server
+                        t_relay();
+                        exit;
+                }
+        } else {
                 #Check Daily Quota Off-Hours
                 cache_add("local", "quotaoff_$avp(accountcode)",1,86400);
                 cache_fetch("local", "quotaoff_$avp(accountcode)", $avp(totalcalls));
-                if($(avp(totalcalls){s.int}) > $(avp(quotaoffhours){s.int})) {
+                if($(avp(totalcalls){s.int}) > $(avp(daily_quota_off){s.int})) {
                         xlog("L_INFO","Fraud Detected: Calls exceeded quota off hours id=$avp(security), quota=$avp(quotaoffhours)");
-                        $acc_extra(REASON)="Quota exceeded off hours";
-                        $avp(severity)=3;
-                        route(respond,"R11");
+                        $var(prefix)="q"+$avp(rule_attrs);
+                        prefix($var(prefix));
+                        $du="sip:PRIVATE_IP:60101";
+                        #Relay to media server
+                        t_relay();
+                        exit;
                 }
         }
+}
 
-        # Experimental, I'm a bit against abnormal detection. It is a delayed indicator, when triggered fraud has already happened
-        ##Check if the volume is abnormal
+#route[zscore] {
         #cache_fetch("local", "total_$avp(accountcode)", $avp(dailycalls));
         #if( $avp(dailycalls)>10 ) {
         #        if( avp_db_query("select avg,std,($avp(dailycalls)-avg)/std*100 from daily_stats_approved where accountcode=$avp(accountcode) order by time desc limit 1","$avp(avg),$avp(std),$avp(zscore)")) {
@@ -401,28 +495,23 @@ route[check_for_fraud] {
         #                if($(avp(zscore){s.int})>196) xlog ("L_INFO", "NORMAL TRAFFIC from $avp(accountcode), calls=$avp(dailycalls) average=$avp(avg) zscore=$avp(zscore)");
         #        }
         #}
-
-        #Call was accepted
-        route(handle_authorized);
-        exit;
-}
+#}
 
 route[getuserdata] {
         xlog("L_INFO","Tempo: $time(%F %H:%M:%S) \n");
         $avp(calltime)=$time(%F %H:%M:%S);
-       
-        if(!avp_db_query("SELECT cc_calls,daily_quota,source_countries,destination_countries FROM subscriber s WHERE s.username='$avp(username)' AND s.domain='$avp(domain)'", "$avp(cc_calls); $avp(daily_quota); $avp(source_countries), $avp(destination_countries)")) {
+        
+        if(!avp_db_query("SELECT cc_calls,cc_calls_off,daily_quota,daily_quota_off,source_countries,destination_countries,block FROM subscriber s WHERE s.username='$avp(username)' AND s.domain='$avp(domain)'", "$avp(cc_calls); $avp(cc_calls_off); $avp(daily_quota); $avp(daily_quota_off); $avp(source_countries); $avp(destination_countries); $avp(block)")) {
                 xlog("L_INFO","User does not exist $avp(username)@$avp(domain)");
                 $acc_extra(REASON)="User does not exist";
                 route(onboarding);
                 exit;
         }
 
-        xlog("L_INFO","GETUSERDATA-> calls concurrent_calls=$avp(cc_calls) daily quota=$avp(daily_quota)");
         $avp(accountcode)=$avp(username)+"@"+$avp(domain);
         cache_add("local", "quota_$avp(accountcode)",1,86400);
         cache_fetch("local", "quota_$avp(accountcode)", $avp(totalcalls));
-        xlog("L_INFO","->getuserdata<- ru=$ru, fu=$fu, rm=$rm si=$si username=$avp(username), domain=$avp(domain), quota=$avp(totalcalls)\n");
+        xlog("L_INFO","->getuserdata<- ru=$ru, fu=$fu, rm=$rm si=$si username=$avp(username), $avp(source_countries), $avp(destination_countries), domain=$avp(domain), quota=$avp(totalcalls)\n");
         return;
 }
 
@@ -435,11 +524,13 @@ route[onboarding] {
 }
 
 route[handle_authorized] {
+        xlog("L_INFO","Handle Authorized f=$fu, r=$ru");
         #There are two methods to authorize ,redirect with A00 or 503
         $rd=$fd;
         $ru="sip:"+$avp(result)+$rU+"@"+$rd;
         $acc_extra(REASON)="Call Authorized";
         $var(authorize)=AUTHORIZE_METHOD;
+        update_stat("calls_approved", 1);
         if($var(authorize)==503) {
                 t_reply(503, "Service Unavailable");
                 exit;
@@ -450,37 +541,40 @@ route[handle_authorized] {
 }
 
 route[email] {
-    # stop script processing if transaction exists
-
-    # Tempo de espera entre emails 30 minutos
+    # Minimum time between e-mails, 15 minutes
 
     if(!cache_fetch("local","timer_$avp(acocuntcode)", $avp(dummy))) {
 
-        cache_store("local","timer_$avp(accountcode)","1",3600);
+        cache_store("local","timer_$avp(accountcode)","1",1500);
 
-        if($avp(result)=="R08") {
+        switch($avp(result))
+        {
+            case "R05":
                 xlog("L_INFO","Email sent to  $avp(email) R08");
-                exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS Real Time Alert] Simultanous calls off hours exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Simultanous calls off hours exceeded from $avp(sourceip), dialed number $var(original)" -S from:tfps@tfps.co $avp(email) -c tfps@tfps.co');
-        }
-
-        if($avp(result)=="R09") {
+                exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS WARNING] Simultanous calls from the same A-B exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Simultanous calls from the same A-B exceeded from $avp(sourceip), dialed number $var(original)" $avp(email) -c NOTIFICATION_EMAIL');
+                break;
+            case "R08":
+                xlog("L_INFO","Email sent to  $avp(email) R08");
+                exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS INFO] Simultanous calls off hours exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Simultanous calls off hours exceeded from $avp(sourceip), dialed number $var(original)" $avp(email) -c NOTIFICATION_EMAIL');
+                break;
+            case "R09":
                 xlog("L_INFO","Email sent to $avp(email) R09");
-                exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS Real Time Alert] Call quota off hours exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Call quota off hours exceeded from $avp(sourceip), dialed number $var(original)" -S from:tfps@tfps.co $avp(email) -c tfps@tfps.co');
-        }
-
-        if($avp(result)=="R10") {
+                exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS INFO] Call quota off hours exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Call quota off hours exceeded from $avp(sourceip), dialed number $var(original)" $avp(email) -c NOTIFICATION_EMAIL');
+                break;
+            case "R10":
                 xlog("L_INFO","Email sent to $avp(email) R10");
-                exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS Real Time Alert] Simultaneous calls exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Simultaneous calls exceeded from $avp(sourceip), dialed number $var(original)" -S from:tfps@tfps.co $avp(email) -c tfps@tfps.co');
-        }
-
-        if($avp(result)=="R11") {
+                exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS INFO] Simultaneous calls exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Simultaneous calls exceeded from $avp(sourceip), dialed number $var(original)" $avp(email) -c NOTIFICATION_EMAIL');
+                break;
+            case "R11":
                 xlog("L_INFO","Email sent to $avp(email) R11");
-                exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS Real Time Alert] Call quota exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Call quota exceeded from $avp(sourceip), dialed number $var(original)" -S from:tfps@tfps.co $avp(email) -c tfps@tfps.co');
-        }
-    }
-    xlog("L_INFO","Time: $avp(calltime) \n");
-    xlog("L_INFO","Email sent to $avp(email)");
-    
+                exec('EMAIL=$avp(email); if [-z "$$EMAIL" ]; then exit 1; fi; echo "[TFPS INFO] Call quota exceeded from $$SIP_HF_FROM for $$SIP_OUSER" | mail -s "Call quota exceeded from $avp(sourceip), dialed number $var(original)" $avp(email) -c NOTIFICATION_EMAIL');
+                break;
+            default:
+                xlog("L_INFO","Time: $avp(calltime) \n");
+                #xlog("L_INFO","No email send, code=$avp(result) user=$avp(username)@$avp(domain), number dialed $rU");
+                break;
+       }   
+    }    
 }
 
 route[cancel] {
@@ -581,7 +675,7 @@ route[preadmission] {
 }
 
 #Verify Identity Header
-route[verify_stir_shaken] {
+route[check_stir_shaken] {
         # certificate managing
         $var(found) = cache_fetch("local", $identity(x5u),$var(cert));
         if (!$var(found) || !stir_shaken_check_cert("$var(cert)")) {
@@ -654,7 +748,10 @@ route[sequential] {
 ## 302 denies calls redirecting to A00, denies calls redirecting to RXX (default method)
 route[respond] {
         $var(authorize)=AUTHORIZE_METHOD;
+        $acc_extra(RESPONSE)=$param(1);
+        update_stat("calls_rejected", 1);
         if($var(authorize)==503) {
+
                 t_reply(603,"Declined");
                 exit;
         } else {

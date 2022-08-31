@@ -18,6 +18,16 @@ context secure {
 		&new_destination_country(${EXTEN:1:2});
 	}
 
+	_q.=>{
+		&getuserdomain();
+		&new_call_quota();
+	}
+
+	_n.=>{
+		&getuserdomain();
+		&new_call_quota_off();
+	}
+
 	//New user
 	_o.=>{
 		&getuserdomain();
@@ -32,7 +42,7 @@ context secure {
 
 
 //Handling the first call
-context onboarding {
+context full_onboarding {
 	s=>{
 		Progress();
 		Set(TIMEOUT(digit)=5);
@@ -57,7 +67,45 @@ context onboarding {
 		System(echo "New user created" | mail -s "User ${USERNAME}@${DOMAIN} from ${SOURCEIP} created with ${cc_calls} concurrent calls and daily quota of ${daily_quota}" NOTIFICATION_EMAIL);
 		agi(googletts.agi,"Thank you, your account was adjusted to ${cc_calls} concurrent calls and ${daily_quota} international calls per day",${LANG});
 		agi(googletts.agi,"Your call will be disconnected now, please redial to complete your call!",${LANG});
-		hangup();
+		hangup(16);
+	}
+
+	i=>{
+		agi(googletts.agi,"Invalid extension.",${LANG});
+		goto s,start;
+	}
+
+	t=>{
+		agi(googletts.agi,"Request timed out.",${LANG});
+		goto s,start;
+	}
+}
+
+//Handling the first call
+context onboarding {
+	s=>{
+		Progress();
+		Set(TIMEOUT(digit)=5);
+		agi(googletts.agi,"Thanks for calling, as this is your first international call, for security reasons, I have to verify you are not a robot.",${LANG});
+		&verify();
+		if(${verify_return}==true) {
+			agi(googletts.agi,"You are now authorized to make international calls",${LANG});			
+		} else {
+			agi(googletts.agi,"The verification failed, please try again!",${LANG});
+			hangup(21);
+		}
+	start:
+		agi(googletts.agi,"Please do not disconnect while I adjust your parameters!",${LANG},any);
+		Noop(Username = ${USERNAME}, domain=${DOMAIN});
+		Set(cc_calls=DEFAULT_CONCURRENT_CALLS);
+		Set(cc_calls_off=DEFAULT_CONCURRENT_CALLS_OFF);
+		Set(daily_quota=DEFAULT_QUOTA);
+		Set(daily_quota_off=DEFAULT_QUOTA_OFF);
+		&setuserdomain();
+		System(echo "New user created" | mail -s "User ${USERNAME}@${DOMAIN} from ${SOURCEIP} created with ${cc_calls} concurrent calls and daily quota of ${daily_quota}" NOTIFICATION_EMAIL);
+		agi(googletts.agi,"Thank you, your account was adjusted to ${cc_calls} concurrent calls and ${daily_quota} international calls per day",${LANG});
+		agi(googletts.agi,"Your call will be disconnected now, please redial to complete your call!",${LANG});
+		hangup(16);
 	}
 
 	i=>{
@@ -80,7 +128,9 @@ macro getuserdomain() {
 		SET(SOURCEIP=${SIP_HEADER(P-Source)});
 	}
 	
-	if(${ISNULL(tfps)}) {
+	Set(tfps=${SIP_HEADER(X-tfps)});
+	NoOP(${tfps});
+	if("${tfps}"="") {
 			Set(USERNAME=${CALLERID(num)});
 			Set(FROM=${SIP_HEADER(From)});
 			Set(DOMAIN=${CUT(CUT(FROM,@,2),\>,1)});
@@ -94,7 +144,7 @@ macro getuserdomain() {
 //Set the user and domain parameters in the database
 macro setuserdomain() {
 	MYSQL(Connect connid localhost ${account} ${sql_password} fps);
-	MYSQL(Query resultid ${connid} INSERT INTO subscriber (username,domain,cc_calls,daily_quota) values('${USERNAME}','${DOMAIN}','${cc_calls}','${daily_quota}'));
+	MYSQL(Query resultid ${connid} INSERT INTO subscriber (username,domain,cc_calls,daily_quota,cc_calls_off,daily_quota_off,source_countries,destination_countries) values('${USERNAME}','${DOMAIN}',${cc_calls},${daily_quota},${cc_calls_off},${daily_quota_off},'DEFAULT_SOURCE_COUNTRIES','DEFAULT_DESTINATION_COUNTRIES'));
 	MYSQL(Disconnect ${connid});
 	return;
 }
@@ -170,7 +220,7 @@ macro new_country(country) {
 	agi(googletts.agi,"This international call is coming from a different country, let me check if you are not a robot:",any);
 	&verify();
 	if(${verify_return}==true) {
-			System(echo "New source country added" | mail -s "User ${USERNAME}@${DOMAIN} from ${SOURCEIP} has added ${country} to its sources" NOTIFICATION_EMAIL);			
+			System(echo "New source country ${country} added for user ${USERNAME}@${DOMAIN}" | mail -s "[TFPS WARNING] User ${USERNAME}@${DOMAIN} from ${SOURCEIP} has added ${country} to its sources" NOTIFICATION_EMAIL);			
 			&setincountry(${country});
 			agi(googletts.agi,"Source country added to the database, please redial to complete your call",${LANG});
 			hangup(16);			
@@ -186,7 +236,7 @@ macro new_destination_country(country) {
 	&verify();
 	if(${verify_return}==true) {
 			&setdstcountry(${country});
-			System(echo "New source country added" | mail -s "User ${USERNAME}@${DOMAIN} from ${SOURCEIP} has added ${country} to its destinations" NOTIFICATION_EMAIL);						
+			System(echo "New destination ${country} added for user ${USERNAME}@${DOMAIN}" | mail -s "[TFPS WARNING] User ${USERNAME}@${DOMAIN} from ${SOURCEIP} has added ${country} to its destinations" NOTIFICATION_EMAIL);						
 			agi(googletts.agi,"Destination country added to the database, please redial to complete your call",${LANG});
 			hangup(16);			
 	} else {
@@ -195,6 +245,37 @@ macro new_destination_country(country) {
 	}
 	return;
 }
+
+macro new_call_quota() {
+	agi(googletts.agi,"This call exceeds the daily quota, let me check if you are not a robot:",any);
+	&verify();
+	if(${verify_return}==true) {
+			&setquota();
+			System(echo "Daily quota increased for user ${USERNAME}@${DOMAIN}" | mail -s "[TFPS WARNING] User ${USERNAME}@${DOMAIN} from ${SOURCEIP} had its daily quota increased by simple verification" NOTIFICATION_EMAIL);						
+			agi(googletts.agi,"Your daily quota was increased, please redial to complete your call",${LANG});
+			hangup(16);			
+	} else {
+			agi(googletts.agi,"The verification failed, please try again!",${LANG});
+			hangup(16);
+	}
+	return;
+}
+
+macro new_call_quota_off() {
+	agi(googletts.agi,"This call exceeds the daily quota for non business hours, let me check if you are not a robot:",any);
+	&verify();
+	if(${verify_return}==true) {
+			&setquota_off();
+			System(echo "New destination ${country} added for user ${USERNAME}@${DOMAIN}" | mail -s "[TFPS WARNING] User ${USERNAME}@${DOMAIN} from ${SOURCEIP} has added ${country} to its destinations" NOTIFICATION_EMAIL);						
+			agi(googletts.agi,"Your daily quota for non-business hours was increased, please redial to complete your call",${LANG});
+			hangup(16);			
+	} else {
+			agi(googletts.agi,"The verification failed, please try again!",${LANG});
+			hangup(16);
+	}
+	return;
+}
+
 
 //Set the user and domain parameters in the database
 macro setincountry(new_country) {
@@ -212,3 +293,18 @@ macro setdstcountry(new_country) {
 	return;
 }
 
+//Set the user and domain parameters in the database
+macro setquota() {
+	MYSQL(Connect connid localhost ${account} ${sql_password} fps);
+	MYSQL(Query resultid ${connid} UPDATE subscriber set daily_quota=daily_quota+1 WHERE username='${USERNAME}' and domain='${DOMAIN}');
+	MYSQL(Disconnect ${connid});
+	return;
+}
+
+//Set the user and domain parameters in the database
+macro setquota_off() {
+	MYSQL(Connect connid localhost ${account} ${sql_password} fps);
+	MYSQL(Query resultid ${connid} UPDATE subscriber set daily_quota_off=daily_quota_off+1 WHERE username='${USERNAME}' and domain='${DOMAIN}');
+	MYSQL(Disconnect ${connid});
+	return;
+}

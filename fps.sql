@@ -41,9 +41,12 @@ CREATE TABLE `acc` (
   `ua` varchar(128) DEFAULT NULL,
   `abuseconfidence` int(11) DEFAULT NULL,
   `block_reason` varchar(128) DEFAULT NULL,
+  `accountcode` varchar(128) DEFAULT NULL,
+  `response` varchar(3) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `callid_idx` (`callid`)
-) ENGINE=InnoDB AUTO_INCREMENT=5023 DEFAULT CHARSET=latin1;
+  KEY `callid_idx` (`callid`),
+  KEY `account_idx` (`accountcode`)
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -52,8 +55,120 @@ CREATE TABLE `acc` (
 
 LOCK TABLES `acc` WRITE;
 /*!40000 ALTER TABLE `acc` DISABLE KEYS */;
-INSERT INTO `acc` VALUES (5010,'INVITE','1343094564',NULL,'1312642606-547426675-1209526502','603','Decline','2021-08-29 11:23:40',0,0,1630236220,'1970-01-01 00:00:00','185.246.211.81','sip:1011972592277524@54.146.73.194','sip:10115414673194:5060@54.146.73.194','pplsip',NULL,'User Agent Blacklisted'),(5011,'INVITE','1641157454','as5240b3ce','1720868280-2030035477-8247712','200','OK','2021-08-29 11:24:03',0,0,1630236243,'1970-01-01 00:00:00','45.134.144.172','sip:2580015103984085@54.146.73.194','sip:11@54.146.73.194',NULL,0,'User does not exist'),(5012,'INVITE','658344644','as68b65782','1397713691-985577604-1984699551','200','OK','2021-08-29 11:24:58',0,0,1630236298,'1970-01-01 00:00:00','45.134.144.172','sip:2640015103984085@54.146.73.194','sip:11@54.146.73.194',NULL,0,'User does not exist'),(5013,'INVITE','510400996','as46a0252d','252802520-1097691971-613652477','200','OK','2021-08-29 11:26:07',0,0,1630236367,'1970-01-01 00:00:00','45.134.144.172','sip:2460015103984085@54.146.73.194','sip:11@54.146.73.194',NULL,0,'User does not exist'),(5014,'INVITE','1078308527','as1eea9c49','148818204-821414279-1319415268','200','OK','2021-08-29 11:27:11',0,0,1630236431,'1970-01-01 00:00:00','45.134.144.172','sip:24680015103984085@54.146.73.194','sip:11@54.146.73.194',NULL,0,'User does not exist'),(5015,'INVITE','1253982704',NULL,'711606630-223357699-657293069','603','Decline','2021-08-29 11:27:58',0,0,1630236478,'1970-01-01 00:00:00','185.246.211.81','sip:11011972592277524@54.146.73.194','sip:110115414673194:5060@54.146.73.194','pplsip',NULL,'User Agent Blacklisted'),(5016,'INVITE','1268810866','as4a89af1e','2076289521-1006242033-913687842','200','OK','2021-08-29 11:28:11',0,0,1630236491,'1970-01-01 00:00:00','45.134.144.172','sip:3690015103984085@54.146.73.194','sip:11@54.146.73.194',NULL,0,'User does not exist'),(5017,'INVITE','2025344331','as580a004e','1407740286-150551265-1846546712','200','OK','2021-08-29 11:29:09',0,0,1630236549,'1970-01-01 00:00:00','45.134.144.172','sip:3510015103984085@54.146.73.194','sip:11@54.146.73.194',NULL,0,'User does not exist'),(5018,'INVITE','1048139878',NULL,'1910082532-955635695-1577318083','603','Decline','2021-08-29 11:29:39',0,0,1630236579,'1970-01-01 00:00:00','192.3.110.139','sip:80114956419264928@54.146.73.194','sip:104@54.146.73.194','Linksys-SPA942',42,'IP Blacklisted'),(5019,'INVITE','511754964','as217a6d91','123371786-729175691-1246458279','200','OK','2021-08-29 11:30:14',0,0,1630236614,'1970-01-01 00:00:00','45.134.144.172','sip:3010015103984085@54.146.73.194','sip:11@54.146.73.194',NULL,0,'User does not exist'),(5020,'INVITE','1481495149','as616800c0','1487327899-1168684165-1261698483','200','OK','2021-08-29 11:31:15',0,0,1630236675,'1970-01-01 00:00:00','45.134.144.172','sip:9630015103984085@54.146.73.194','sip:11@54.146.73.194',NULL,0,'User does not exist'),(5021,'INVITE','1246485934',NULL,'1883479481-259106249-1176766915','603','Decline','2021-08-29 11:32:13',0,0,1630236733,'1970-01-01 00:00:00','143.244.57.111','sip:21011972592277524@54.146.73.194','sip:210115414673194:5060@54.146.73.194','pplsip',NULL,'User Agent Blacklisted'),(5022,'INVITE','169564019','as1f944a60','1240258108-1584242358-1730623656','200','OK','2021-08-29 11:32:19',0,0,1630236739,'1970-01-01 00:00:00','45.134.144.172','sip:8520015103984085@54.146.73.194','sip:11@54.146.73.194',NULL,0,'User does not exist');
 /*!40000 ALTER TABLE `acc` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `account_stats_approved`
+--
+
+DROP TABLE IF EXISTS `account_stats_approved`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `account_stats_approved` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `accountcode` varchar(128) DEFAULT NULL,
+  `avg` double(10,5) DEFAULT NULL,
+  `std` double(10,5) DEFAULT NULL,
+  `lastUpdated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `zscore` double(10,5) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `accountcode_idx` (`accountcode`),
+  KEY `accountcode` (`accountcode`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `account_stats_approved`
+--
+
+LOCK TABLES `account_stats_approved` WRITE;
+/*!40000 ALTER TABLE `account_stats_approved` DISABLE KEYS */;
+/*!40000 ALTER TABLE `account_stats_approved` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `account_stats_approved_off`
+--
+
+DROP TABLE IF EXISTS `account_stats_approved_off`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `account_stats_approved_off` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `accountcode` varchar(128) DEFAULT NULL,
+  `avg` double(10,5) DEFAULT NULL,
+  `std` double(10,5) DEFAULT NULL,
+  `lastUpdated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `zscore` double(10,5) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `accountcode` (`accountcode`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `account_stats_approved_off`
+--
+
+LOCK TABLES `account_stats_approved_off` WRITE;
+/*!40000 ALTER TABLE `account_stats_approved_off` DISABLE KEYS */;
+/*!40000 ALTER TABLE `account_stats_approved_off` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `account_stats_rejected`
+--
+
+DROP TABLE IF EXISTS `account_stats_rejected`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `account_stats_rejected` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `accountcode` varchar(128) DEFAULT NULL,
+  `avg` double(10,5) DEFAULT NULL,
+  `std` double(10,5) DEFAULT NULL,
+  `lastUpdated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `zscore` double(10,5) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `accountcode` (`accountcode`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `account_stats_rejected`
+--
+
+LOCK TABLES `account_stats_rejected` WRITE;
+/*!40000 ALTER TABLE `account_stats_rejected` DISABLE KEYS */;
+/*!40000 ALTER TABLE `account_stats_rejected` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `account_stats_rejected_off`
+--
+
+DROP TABLE IF EXISTS `account_stats_rejected_off`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `account_stats_rejected_off` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `accountcode` varchar(128) DEFAULT NULL,
+  `avg` double(10,5) DEFAULT NULL,
+  `std` double(10,5) DEFAULT NULL,
+  `lastUpdated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `zscore` double(10,5) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `accountcode` (`accountcode`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `account_stats_rejected_off`
+--
+
+LOCK TABLES `account_stats_rejected_off` WRITE;
+/*!40000 ALTER TABLE `account_stats_rejected_off` DISABLE KEYS */;
+/*!40000 ALTER TABLE `account_stats_rejected_off` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -109,7 +224,7 @@ CREATE TABLE `captcha_failure_events` (
 
 LOCK TABLES `captcha_failure_events` WRITE;
 /*!40000 ALTER TABLE `captcha_failure_events` DISABLE KEYS */;
-INSERT INTO `captcha_failure_events` VALUES ('2021-08-28 09:55:27','1000','54.146.73.194','');
+INSERT INTO `captcha_failure_events` VALUES ('2021-08-28 09:55:27','1000','54.146.73.194',''),('2022-08-30 18:10:41','','',''),('2022-08-30 18:11:14','','',''),('2022-08-30 18:18:23','','',''),('2022-08-30 18:18:38','','',''),('2022-08-30 18:19:23','','','');
 /*!40000 ALTER TABLE `captcha_failure_events` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -138,6 +253,126 @@ LOCK TABLES `countries` WRITE;
 /*!40000 ALTER TABLE `countries` DISABLE KEYS */;
 INSERT INTO `countries` VALUES (1,'Afghanistan','AF',3,'Asia'),(2,'Albania','AL',3,'Europe'),(3,'Algeria','DZ',3,'Africa'),(4,'American Samoa','AS',1,'Oceania'),(5,'Andorra','AD',1,'Europe'),(6,'Angola','AO',3,'Africa'),(7,'Anguilla','AI',3,'North America'),(8,'Antarctica','AQ',3,'Antarctica'),(9,'Antigua and Barbuda','AG',2,'North America'),(10,'Argentina','AR',2,'South America'),(11,'Armenia','AM',3,'Asia'),(12,'Aruba','AW',2,'North America'),(13,'Australia','AU',1,'Oceania'),(14,'Austria','AT',2,'Europe'),(15,'Azerbaijan','AZ',3,'Asia'),(16,'Bahamas','BS',1,'North America'),(17,'Bahrain','BH',1,'Asia'),(18,'Bangladesh','BD',2,'Asia'),(19,'Barbados','BB',3,'North America'),(20,'Belarus','BY',3,'Asia'),(21,'Belgium','BE',1,'Europe'),(22,'Belize','BZ',2,'North America'),(23,'Benin','BJ',2,'Africa'),(24,'Bermuda','BM',2,'North America'),(25,'Bhutan','BT',2,'Asia'),(26,'Bolivia','BO',2,'South America'),(27,'Bosnia-Herzegovina','BA',3,'Europe'),(28,'Botswana','BW',2,'Africa'),(29,'Brazil','BR',2,'South America'),(30,'Brunei Darussalam','BN',1,'Oceania'),(31,'Bulgaria','BG',2,'Europe'),(32,'Burkina Faso','BF',3,'Africa'),(33,'Burundi','BI',3,'Africa'),(34,'Cambodia','KH',2,'Asia'),(35,'Cameroon','CM',3,'Africa'),(36,'Canada','CA',1,'North America'),(37,'Cape Verde','CV',1,'Europe'),(38,'Cayman Islands','KY',2,'North America'),(39,'Central African Republic','CF',3,'Africa'),(40,'Chad','TD',3,'Africa'),(41,'Chile','CL',2,'South America'),(42,'China','CN',1,'Asia'),(43,'Christmas Island','CX',1,'Oceania'),(44,'Cocos (Keeling) Islands','CC',1,'Oceania'),(45,'Colombia','CO',1,'South America'),(46,'Comoros','KM',2,'Africa'),(47,'Congo','CG',3,'Africa'),(48,'\"Congo',' D',3,'Africa'),(49,'Cook Islands','CK',2,'Oceania'),(50,'Costa Rica','CR',2,'North America'),(51,'Croatia','HR',2,'Europe'),(52,'Cuba','CU',3,'North America'),(53,'Cyprus','CY',2,'Europe'),(54,'Czech Rep.','CZ',1,'Europe'),(55,'Denmark','DK',1,'Europe'),(56,'Djibouti','DJ',2,'Africa'),(57,'Dominica','DM',3,'North America'),(58,'Dominican Republic','DO',2,'North America'),(59,'Ecuador','EC',3,'South America'),(60,'Egypt','EG',2,'Africa'),(61,'El Salvador','SV',2,'North America'),(62,'Equatorial Guinea','GQ',3,'Africa'),(63,'Eritrea','ER',3,'Africa'),(64,'Estonia','EE',3,'Europe'),(65,'Ethiopia','ET',3,'Africa'),(66,'Falkland Islands (Malvinas)','FK',1,'South America'),(67,'Faroe Islands','FO',1,'Europe'),(68,'Fiji','FJ',1,'Oceania'),(69,'Finland','FI',2,'Europe'),(70,'France','FR',2,'Europe'),(71,'French Guiana','GF',1,'South America'),(72,'Gabon','GA',3,'Africa'),(73,'Gambia','GM',3,'Africa'),(74,'Georgia','GE',1,'Asia'),(75,'Germany','DE',1,'Europe'),(76,'Ghana','GH',3,'Africa'),(77,'Gibraltar','GI',1,'Europe'),(78,'Great Britain','GB',3,'Europe'),(79,'Greece','GR',1,'Europe'),(80,'Greenland','GL',1,'Europe'),(81,'Grenada','GD',3,'North America'),(82,'Guadeloupe (French)','GP',1,'North America'),(83,'Guam (USA)','GU',1,'Oceania'),(84,'Guatemala','GT',3,'North America'),(85,'Guinea','GN',3,'Africa'),(86,'Guinea Bissau','GW',3,'Africa'),(87,'Guyana','GY',1,'South America'),(88,'Haiti','HT',2,'North America'),(89,'Honduras','HN',2,'North America'),(90,'Hong Kong','HK',3,'Asia'),(91,'Hungary','HU',1,'Europe'),(92,'Iceland','IS',1,'Europe'),(93,'India','IN',1,'Asia'),(94,'Indonesia','ID',1,'Oceania'),(95,'Iran','IR',1,'Asia'),(96,'Iraq','IQ',1,'Asia'),(97,'Ireland','IE',1,'Europe'),(98,'Israel','IL',3,'Asia'),(99,'Italy','IT',2,'Europe'),(100,'Ivory Coast','CI',3,'Africa'),(101,'Jamaica','JM',3,'North America'),(102,'Japan','JP',1,'Asia'),(103,'Jordan','JO',1,'Asia'),(104,'Kazakhstan','KZ',3,'Asia'),(105,'Kenya','KE',2,'Africa'),(106,'Kiribati','KI',3,'Oceania'),(107,'Korea-North','KP',2,'Asia'),(108,'Korea-South','KR',1,'Asia'),(109,'Kuwait','KW',1,'Asia'),(110,'Kyrgyzstan','KG',3,'Asia'),(111,'Laos','LA',2,'Asia'),(112,'Latvia','LV',3,'Europe'),(113,'Lebanon','LB',2,'Asia'),(114,'Lesotho','LS',2,'Africa'),(115,'Liberia','LR',3,'Africa'),(116,'Libya','LY',2,'Africa'),(117,'Liechtenstein','LI',3,'Europe'),(118,'Lithuania','LT',3,'Europe'),(119,'Luxembourg','LU',2,'Europe'),(120,'Macau','MO',2,'Asia'),(121,'Macedonia','MK',2,'Europe'),(122,'Madagascar','MG',3,'Africa'),(123,'Malawi','MW',3,'Africa'),(124,'Malaysia','MY',2,'Asia'),(125,'Maldives','MV',3,'Asia'),(126,'Mali','ML',2,'Africa'),(127,'Malta','MT',1,'Europe'),(128,'Marshall Islands','MH',1,'Oceania'),(129,'Martinique (French)','MQ',2,'North America'),(130,'Mauritania','MR',3,'Africa'),(131,'Mauritius','MU',2,'Africa'),(132,'Mayotte','YT',2,'Africa'),(133,'Mexico','MX',1,'North America'),(134,'Micronesia','FM',1,'Oceania'),(135,'Moldova','MD',3,'Europe'),(136,'Monaco','MC',1,'Europe'),(137,'Mongolia','MN',2,'Asia'),(138,'Montenegro','ME',3,'Europe'),(139,'Montserrat','MS',2,'North America'),(140,'Morocco','MA',2,'Africa'),(141,'Mozambique','MZ',2,'Africa'),(142,'Myanmar','MM',3,'Asia'),(143,'Namibia','NA',2,'Africa'),(144,'Nauru','NR',3,'Oceania'),(145,'Nepal','NP',2,'Asia'),(146,'Netherlands','NL',2,'Europe'),(147,'Netherlands Antilles','AN',2,'North America'),(148,'New Caledonia (French)','NC',1,'Oceania'),(149,'New Zealand','NZ',1,'Oceania'),(150,'Nicaragua','NI',2,'North America'),(151,'Niger','NE',2,'Africa'),(152,'Nigeria','NG',2,'Africa'),(153,'Niue','NU',3,'Oceania'),(154,'Norfolk Island','NF',1,'Oceania'),(155,'Northern Mariana Islands','MP',1,'Oceania'),(156,'Norway','NO',1,'Europe'),(157,'Oman','OM',2,'Asia'),(158,'Pakistan','PK',2,'Asia'),(159,'Palau','PW',1,'Oceania'),(160,'Panama','PA',2,'North America'),(161,'Papua New Guinea','PG',1,'Oceania'),(162,'Paraguay','PY',2,'South America'),(163,'Peru','PE',2,'South America'),(164,'Philippines','PH',2,'Oceania'),(165,'Poland','PL',3,'Europe'),(166,'Polynesia (French)','PF',1,'Oceania'),(167,'Portugal','PT',1,'Europe'),(168,'Puerto Rico','PR',1,'North America'),(169,'Qatar','QA',1,'Asia'),(170,'Reunion (French)','RE',1,'Africa'),(171,'Romania','RO',2,'Europe'),(172,'Russia','RU',3,'Asia'),(173,'Rwanda','RW',3,'Africa'),(174,'Saint Helena','SH',1,'Africa'),(175,'Saint Kitts & Nevis Anguilla','KN',2,'North America'),(176,'Saint Lucia','LC',2,'North America'),(177,'Saint Pierre and Miquelon','PM',2,'North America'),(178,'Saint Vincent & Grenadines','VC',2,'North America'),(179,'Samoa','WS',1,'Oceania'),(180,'San Marino','SM',3,'Europe'),(181,'Sao Tome and Principe','ST',3,'Africa'),(182,'Saudi Arabia','SA',1,'Asia'),(183,'Senegal','SN',3,'Africa'),(184,'Serbia','RS',3,'Europe'),(185,'Seychelles','SC',3,'Africa'),(186,'Sierra Leone','SL',3,'Africa'),(187,'Singapore','SG',1,'Asia'),(188,'Slovakia','SK',1,'Europe'),(189,'Slovenia','SI',2,'Europe'),(190,'Solomon Islands','SB',1,'Africa'),(191,'Somalia','SO',3,'Africa'),(192,'South Africa','ZA',2,'Africa'),(193,'Spain','ES',3,'Europe'),(194,'Sri Lanka','LK',1,'Asia'),(195,'Sudan','SD',2,'Africa'),(196,'Suriname','SR',2,'South America'),(197,'Swaziland','SZ',2,'Africa'),(198,'Sweden','SE',1,'Europe'),(199,'Switzerland','CH',2,'Europe'),(200,'Syria','SY',2,'Asia'),(201,'Taiwan','TW',1,'Asia'),(202,'Tajikistan','TJ',3,'Asia'),(203,'Tanzania','TZ',3,'Africa'),(204,'Thailand','TH',2,'Asia'),(205,'Togo','TG',3,'Africa'),(206,'Tokelau','TK',1,'Oceania'),(207,'Tonga','TO',1,'Oceania'),(208,'Trinidad and Tobago','TT',2,'North America'),(209,'Tunisia','TN',3,'Africa'),(210,'Turkey','TR',1,'Asia'),(211,'Turkmenistan','TM',2,'Asia'),(212,'Turks and Caicos Islands','TC',1,'Oceania'),(213,'Tuvalu','TV',1,'Oceania'),(214,'U.K.','UK',3,'Europe'),(215,'Uganda','UG',3,'Africa'),(216,'Ukraine','UA',2,'Europe'),(217,'United Arab Emirates','AE',1,'Asia'),(218,'Uruguay','UY',1,'South America'),(219,'USA','US',1,'North America'),(220,'Uzbekistan','UZ',3,'Asia'),(221,'Vanuatu','VU',3,'Oceania'),(222,'Vatican','VA',1,'Europe'),(223,'Venezuela','VE',2,'South America'),(224,'Vietnam','VN',2,'Asia'),(225,'Virgin Islands (British)','VG',2,'North America'),(226,'Virgin Islands (USA)','VI',2,'North America'),(227,'Wallis and Futuna Islands','WF',1,'Oceania'),(228,'Yemen','YE',2,'Asia'),(229,'Zambia','ZM',2,'Africa'),(230,'Zimbabwe','ZW',2,'Africa'),(231,'Satellite','SS',3,'Non Geographical');
 /*!40000 ALTER TABLE `countries` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `daily_stats_approved`
+--
+
+DROP TABLE IF EXISTS `daily_stats_approved`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `daily_stats_approved` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `time` datetime DEFAULT NULL,
+  `accountcode` varchar(128) DEFAULT NULL,
+  `counter` int(11) DEFAULT NULL,
+  `counter_adjusted` int(11) DEFAULT NULL,
+  `zscore` double(6,4) DEFAULT NULL,
+  `avg` double(6,4) DEFAULT NULL,
+  `std` double(6,4) DEFAULT NULL,
+  `outlier` tinyint(1) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `daily_stats_approved`
+--
+
+LOCK TABLES `daily_stats_approved` WRITE;
+/*!40000 ALTER TABLE `daily_stats_approved` DISABLE KEYS */;
+/*!40000 ALTER TABLE `daily_stats_approved` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `daily_stats_approved_off`
+--
+
+DROP TABLE IF EXISTS `daily_stats_approved_off`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `daily_stats_approved_off` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `time` datetime DEFAULT NULL,
+  `accountcode` varchar(128) DEFAULT NULL,
+  `counter` int(11) DEFAULT NULL,
+  `counter_adjusted` int(11) DEFAULT NULL,
+  `zscore` double(6,4) DEFAULT NULL,
+  `avg` double(6,4) DEFAULT NULL,
+  `std` double(6,4) DEFAULT NULL,
+  `outlier` tinyint(1) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `daily_stats_approved_off`
+--
+
+LOCK TABLES `daily_stats_approved_off` WRITE;
+/*!40000 ALTER TABLE `daily_stats_approved_off` DISABLE KEYS */;
+/*!40000 ALTER TABLE `daily_stats_approved_off` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `daily_stats_rejected`
+--
+
+DROP TABLE IF EXISTS `daily_stats_rejected`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `daily_stats_rejected` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `time` datetime DEFAULT NULL,
+  `accountcode` varchar(128) DEFAULT NULL,
+  `counter` int(11) DEFAULT NULL,
+  `counter_adjusted` int(11) DEFAULT NULL,
+  `zscore` double(6,4) DEFAULT NULL,
+  `avg` double(6,4) DEFAULT NULL,
+  `std` double(6,4) DEFAULT NULL,
+  `outlier` tinyint(1) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `daily_stats_rejected`
+--
+
+LOCK TABLES `daily_stats_rejected` WRITE;
+/*!40000 ALTER TABLE `daily_stats_rejected` DISABLE KEYS */;
+/*!40000 ALTER TABLE `daily_stats_rejected` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `daily_stats_rejected_off`
+--
+
+DROP TABLE IF EXISTS `daily_stats_rejected_off`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `daily_stats_rejected_off` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `time` datetime DEFAULT NULL,
+  `accountcode` varchar(128) DEFAULT NULL,
+  `counter` int(11) DEFAULT NULL,
+  `counter_adjusted` int(11) DEFAULT NULL,
+  `zscore` double(6,4) DEFAULT NULL,
+  `avg` double(6,4) DEFAULT NULL,
+  `std` double(6,4) DEFAULT NULL,
+  `outlier` tinyint(1) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `daily_stats_rejected_off`
+--
+
+LOCK TABLES `daily_stats_rejected_off` WRITE;
+/*!40000 ALTER TABLE `daily_stats_rejected_off` DISABLE KEYS */;
+/*!40000 ALTER TABLE `daily_stats_rejected_off` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -215,6 +450,33 @@ LOCK TABLES `dialplan` WRITE;
 /*!40000 ALTER TABLE `dialplan` DISABLE KEYS */;
 INSERT INTO `dialplan` VALUES (125,99997,0,1,'^sipcli','','',0,'fps',0,NULL),(126,99997,0,1,'^friendly','','',0,'fps',0,NULL),(127,99997,0,1,'^VaxUserAgent','','',0,'fps',0,NULL),(128,99997,0,1,'^[sS][iI][vV][uU][sS]','','',0,'fps',0,NULL),(129,99997,0,1,'^Nsauditor','','',0,'fps',0,NULL),(130,99997,0,1,'^VaxSIPUserAgent','','',0,'fps',0,NULL),(131,99997,0,1,'^SipReg','','',0,'fps',0,NULL),(133,99997,0,1,'^Custom SIP','','',0,'fps',0,NULL),(134,25000,1,1,'^[2-9][0-9]{7}','','',0,'fps',0,NULL),(135,99997,0,0,'^Asterisk\\sPBX\\s11.11.11','','',0,'fps',0,NULL),(136,99997,0,1,'^Nmap\\sNSE','','',0,'fps',0,NULL),(138,99997,0,1,'^PBX$','','',0,'fps',0,NULL),(139,99997,0,1,'^Trixbox$','','',0,'fps',0,NULL),(140,99997,0,1,'^SipClient','','',0,'fps',0,NULL),(141,99997,0,1,'^opensip$','','',0,'fps',0,NULL),(142,99997,0,1,'^sipscan','','',0,'fps',0,NULL),(143,99997,0,1,'^sipsorcery','','',0,'fps',0,NULL),(145,99997,0,1,'^pplsip','','',0,'fps',0,NULL);
 /*!40000 ALTER TABLE `dialplan` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `domain`
+--
+
+DROP TABLE IF EXISTS `domain`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `domain` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `domain` char(64) NOT NULL DEFAULT '',
+  `attrs` char(255) DEFAULT NULL,
+  `last_modified` datetime NOT NULL DEFAULT '1900-01-01 00:00:01',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `domain_idx` (`domain`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `domain`
+--
+
+LOCK TABLES `domain` WRITE;
+/*!40000 ALTER TABLE `domain` DISABLE KEYS */;
+INSERT INTO `domain` VALUES (1,'vollicom.com',NULL,'2022-08-29 14:40:13');
+/*!40000 ALTER TABLE `domain` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -465,6 +727,170 @@ LOCK TABLES `missed_calls` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `ocp_admin_privileges`
+--
+
+DROP TABLE IF EXISTS `ocp_admin_privileges`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ocp_admin_privileges` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(64) NOT NULL DEFAULT '',
+  `last_name` varchar(64) NOT NULL DEFAULT '',
+  `username` varchar(64) NOT NULL DEFAULT '',
+  `password` varchar(64) NOT NULL DEFAULT '',
+  `ha1` varchar(256) DEFAULT '',
+  `available_tools` varchar(512) NOT NULL DEFAULT '',
+  `permissions` varchar(512) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ocp_admin_privileges`
+--
+
+LOCK TABLES `ocp_admin_privileges` WRITE;
+/*!40000 ALTER TABLE `ocp_admin_privileges` DISABLE KEYS */;
+INSERT INTO `ocp_admin_privileges` VALUES (1,'Super','Admin','admin','','782f2718743afbaf7fba1497a9e05f35','all','all');
+/*!40000 ALTER TABLE `ocp_admin_privileges` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ocp_boxes_config`
+--
+
+DROP TABLE IF EXISTS `ocp_boxes_config`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ocp_boxes_config` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL DEFAULT '',
+  `mi_conn` varchar(64) DEFAULT NULL,
+  `monit_conn` varchar(64) DEFAULT NULL,
+  `monit_user` varchar(64) DEFAULT NULL,
+  `monit_pass` varchar(64) DEFAULT NULL,
+  `monit_ssl` varchar(5) DEFAULT NULL,
+  `smonitcharts` varchar(5) DEFAULT NULL,
+  `assoc_id` varchar(10) DEFAULT '-1',
+  `desc` varchar(128) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name_key` (`name`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ocp_boxes_config`
+--
+
+LOCK TABLES `ocp_boxes_config` WRITE;
+/*!40000 ALTER TABLE `ocp_boxes_config` DISABLE KEYS */;
+INSERT INTO `ocp_boxes_config` VALUES (1,'','json:127.0.0.1:8888/mi',NULL,NULL,NULL,NULL,NULL,'1','Default box');
+/*!40000 ALTER TABLE `ocp_boxes_config` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ocp_monitored_stats`
+--
+
+DROP TABLE IF EXISTS `ocp_monitored_stats`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ocp_monitored_stats` (
+  `name` varchar(64) NOT NULL,
+  `box_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`name`,`box_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ocp_monitored_stats`
+--
+
+LOCK TABLES `ocp_monitored_stats` WRITE;
+/*!40000 ALTER TABLE `ocp_monitored_stats` DISABLE KEYS */;
+/*!40000 ALTER TABLE `ocp_monitored_stats` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ocp_monitoring_stats`
+--
+
+DROP TABLE IF EXISTS `ocp_monitoring_stats`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ocp_monitoring_stats` (
+  `name` varchar(64) NOT NULL,
+  `time` int(11) NOT NULL,
+  `value` varchar(64) NOT NULL DEFAULT '0',
+  `box_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`name`,`time`,`box_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ocp_monitoring_stats`
+--
+
+LOCK TABLES `ocp_monitoring_stats` WRITE;
+/*!40000 ALTER TABLE `ocp_monitoring_stats` DISABLE KEYS */;
+/*!40000 ALTER TABLE `ocp_monitoring_stats` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ocp_system_config`
+--
+
+DROP TABLE IF EXISTS `ocp_system_config`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ocp_system_config` (
+  `assoc_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) DEFAULT NULL,
+  `desc` varchar(64) DEFAULT '',
+  PRIMARY KEY (`assoc_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ocp_system_config`
+--
+
+LOCK TABLES `ocp_system_config` WRITE;
+/*!40000 ALTER TABLE `ocp_system_config` DISABLE KEYS */;
+INSERT INTO `ocp_system_config` VALUES (1,'System 0','Default system');
+/*!40000 ALTER TABLE `ocp_system_config` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ocp_tools_config`
+--
+
+DROP TABLE IF EXISTS `ocp_tools_config`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ocp_tools_config` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `module` varchar(64) NOT NULL,
+  `param` varchar(64) NOT NULL,
+  `value` blob,
+  `box_id` varchar(15) DEFAULT '',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `box_key` (`module`,`param`,`box_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=46 DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ocp_tools_config`
+--
+
+LOCK TABLES `ocp_tools_config` WRITE;
+/*!40000 ALTER TABLE `ocp_tools_config` DISABLE KEYS */;
+INSERT INTO `ocp_tools_config` VALUES (1,'user_management','passwd_mode',_binary '0',''),(2,'user_management','user_format',_binary '^[a-zA-Z0-9&=+$,;?/%]+$',''),(3,'user_management','table_aliases',_binary '{\r\n    \"DBaliases\": \"dbaliases\"\r\n}',''),(4,'user_management','subs_extra',_binary '{\r\n    \"cc_calls\": {\r\n        \"header\": \"cc_calls\",\r\n        \"info\": \"Concurrent calls\",\r\n        \"show_in_main_form\": true,\r\n        \"show_in_add_form\": true,\r\n        \"show_in_edit_form\": true,\r\n        \"is_optional\": \"y\",\r\n        \"searchable\": true\r\n    },\r\n    \"cc_calls_off\": {\r\n        \"header\": \"cc_calls_off\",\r\n        \"info\": \"Concurrent calls off hours\",\r\n        \"show_in_main_form\": true,\r\n        \"show_in_add_form\": true,\r\n        \"show_in_edit_form\": true,\r\n        \"is_optional\": \"y\",\r\n        \"searchable\": true\r\n    },\r\n    \"daily_quota\": {\r\n        \"header\": \"daily_quota\",\r\n        \"info\": \"Daily quota of international calls off hours\",\r\n        \"show_in_main_form\": true,\r\n        \"show_in_add_form\": true,\r\n        \"show_in_edit_form\": true,\r\n        \"is_optional\": \"y\",\r\n        \"searchable\": false\r\n    },\r\n    \"daily_quota_off\": {\r\n        \"header\": \"daily_quota\",\r\n        \"info\": \"Daily quota of international calls off hours\",\r\n        \"show_in_main_form\": true,\r\n        \"show_in_add_form\": true,\r\n        \"show_in_edit_form\": true,\r\n        \"is_optional\": \"y\",\r\n        \"searchable\": false\r\n    },\r\n    \"source_countries\": {\r\n        \"header\": \"source_countries\",\r\n        \"info\": \"Country determined by source IP\",\r\n        \"show_in_main_form\": true,\r\n        \"show_in_add_form\": true,\r\n        \"show_in_edit_form\": true,\r\n        \"is_optional\": \"y\",\r\n        \"searchable\": false\r\n    },\r\n    \"destination_countries\": {\r\n        \"header\": \"destination_countries\",\r\n        \"info\": \"Destination determined by e164 prefix\",\r\n        \"show_in_main_form\": true,\r\n        \"show_in_add_form\": true,\r\n        \"show_in_edit_form\": true,\r\n        \"is_optional\": \"y\",\r\n        \"searchable\": false\r\n    },\r\n    \"block\": {\r\n        \"header\": \"User Blocked\",\r\n        \"info\": \"The user was blocked by the administrator\",\r\n        \"show_in_main_form\": true,\r\n        \"show_in_add_form\": true,\r\n        \"show_in_edit_form\": true,\r\n        \"is_optional\": \"y\",\r\n        \"searchable\": false\r\n    }\r\n}',''),(5,'user_management','talk_to_this_assoc_id',_binary '1',''),(6,'user_management','table_users',_binary 'subscriber',''),(7,'user_management','table_location',_binary 'location',''),(8,'user_management','results_per_page',_binary '30',''),(9,'user_management','results_page_range',_binary '10',''),(10,'drouting','routing_partition','',''),(11,'drouting','talk_to_this_assoc_id',_binary '1',''),(12,'drouting','gateway_types_file',_binary '{\r\n    \"0\": \"Gateway\"\r\n}',''),(13,'drouting','default_gw_type',_binary '1',''),(14,'drouting','gw_attributes_mode',_binary 'none',''),(15,'drouting','gw_attributes',_binary '{\r\n    \"display_name\": \"Attributes\",\r\n    \"add_prefill_value\": \"\",\r\n    \"validation_regexp\": null,\r\n    \"validation_error\": null\r\n}',''),(16,'drouting','carrier_attributes_mode',_binary 'none',''),(17,'drouting','carrier_attributes',_binary '{\r\n    \"display_name\": \"Attributes\",\r\n    \"add_prefill_value\": \"\",\r\n    \"validation_regexp\": null,\r\n    \"validation_error\": null\r\n}',''),(18,'drouting','group_ids_file',_binary '{\r\n    \"0\": \"Default\"\r\n}',''),(19,'drouting','group_id_method',_binary 'static',''),(20,'drouting','default_domain',_binary 'yourdomain.net',''),(21,'drouting','table_gateways',_binary 'dr_gateways',''),(22,'drouting','table_groups',_binary 'dr_groups',''),(23,'drouting','table_rules',_binary 'dr_rules',''),(24,'drouting','table_carriers',_binary 'dr_carriers',''),(25,'drouting','tabs',_binary 'rules.php',''),(26,'drouting','results_per_page',_binary '30',''),(27,'drouting','results_page_range',_binary '10',''),(28,'smonitor','sampling_time',_binary '1',''),(29,'smonitor','chart_size',_binary '100',''),(30,'smonitor','chart_history',_binary 'auto',''),(31,'smonitor','groups',_binary '\"\"',''),(32,'smonitor','charting_url',_binary 'https://d3js.org/d3.v4.js',''),(33,'smonitor','table_monitored',_binary 'ocp_monitored_stats',''),(34,'smonitor','table_monitoring',_binary 'ocp_monitoring_stats',''),(35,'smonitor','tabs',_binary 'rt_stats.php,charts.php',''),(36,'cdrviewer','cdr_table',_binary 'acc',''),(37,'cdrviewer','cdr_id_field_name',_binary 'id',''),(38,'cdrviewer','sip_call_id_field_name',_binary 'callid',''),(39,'cdrviewer','show_field',_binary '{\r\n    \"time\": \"Time\",\r\n    \"accountcode\": \"Account\",\r\n    \"method\": \"Method\",\r\n    \"callid\": \"Sip Call ID\",\r\n    \"sip_code\": \"Sip Code\",\r\n    \"block_reason\": \"Block Reason\",\r\n    \"response\": \"R-Code\",\r\n    \"abuseconfidence\": \"Confidence\"\r\n\r\n}',''),(40,'cdrviewer','results_per_page',_binary '25',''),(41,'cdrviewer','results_page_range',_binary '10',''),(42,'cdrviewer','cdr_repository_path',_binary '/var/lib/opensips_cdrs',''),(43,'cdrviewer','cdr_set_field_names',_binary '1',''),(44,'cdrviewer','delay',_binary '3600',''),(45,'cdrviewer','export_csv',_binary '{\r\n    \"id\": \"CDR ID\",\r\n    \"time\": \"Call Start Time\",\r\n    \"method\": \"SIP Method\",\r\n    \"callid\": \"Sip Call ID\",\r\n    \"sip_code\": \"Sip Code\",\r\n    \"sip_reason\": \"Sip Reason\",\r\n    \"setuptime\": \"Setup Time\",\r\n    \"duration\": \"Duration\",\r\n    \"from_tag\": \"Sip From Tag\",\r\n    \"to_tag\": \"Sip To Tag\"\r\n}','');
+/*!40000 ALTER TABLE `ocp_tools_config` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `response`
 --
 
@@ -509,13 +935,17 @@ CREATE TABLE `subscriber` (
   `ha1` char(64) NOT NULL DEFAULT '',
   `ha1b` char(64) NOT NULL DEFAULT '',
   `cc_calls` int(11) DEFAULT '1',
+  `cc_calls_off` int(11) DEFAULT '1',
   `daily_quota` int(11) DEFAULT '10',
+  `daily_quota_off` int(11) DEFAULT '1',
   `source_countries` varchar(1024) DEFAULT 'US',
   `destination_countries` varchar(1024) DEFAULT 'US',
+  `username_domain` char(255) GENERATED ALWAYS AS (concat(`username`,`domain`)) STORED,
+  `block` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `account_idx` (`username`,`domain`),
   KEY `username_idx` (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -547,7 +977,7 @@ CREATE TABLE `version` (
 
 LOCK TABLES `version` WRITE;
 /*!40000 ALTER TABLE `version` DISABLE KEYS */;
-INSERT INTO `version` VALUES ('acc',7),('active_watchers',10),('address',5),('aliases',1005),('b2b_entities',1),('b2b_logic',2),('carrierfailureroute',2),('carrierroute',3),('closeddial',1),('cpl',2),('dbaliases',2),('dialog',7),('dialplan',5),('dispatcher',4),('domain',2),('domainpolicy',4),('dr_carriers',3),('dr_gateways',6),('dr_groups',2),('dr_partitions',1),('dr_rules',4),('globalblacklist',2),('grp',3),('gw',9),('imc_members',3),('imc_rooms',3),('lcr',4),('load_balancer',2),('location',1007),('missed_calls',5),('nh_sockets',1),('pdt',3),('presentity',5),('pua',8),('re_grp',3),('rls_presentity',1),('rls_watchers',2),('route_tree',2),('silo',7),('sip_trace',4),('speed_dial',4),('subscriber',7),('trusted',6),('userblacklist',2),('usr_preferences',4),('watchers',4),('xcap',4);
+INSERT INTO `version` VALUES ('acc',7),('active_watchers',10),('address',5),('aliases',1005),('b2b_entities',1),('b2b_logic',2),('carrierfailureroute',2),('carrierroute',3),('closeddial',1),('cpl',2),('dbaliases',2),('dialog',7),('dialplan',5),('dispatcher',4),('domain',3),('domainpolicy',4),('dr_carriers',3),('dr_gateways',6),('dr_groups',2),('dr_partitions',1),('dr_rules',4),('globalblacklist',2),('grp',3),('gw',9),('imc_members',3),('imc_rooms',3),('lcr',4),('load_balancer',2),('location',1007),('missed_calls',5),('nh_sockets',1),('pdt',3),('presentity',5),('pua',8),('re_grp',3),('rls_presentity',1),('rls_watchers',2),('route_tree',2),('silo',7),('sip_trace',4),('speed_dial',4),('subscriber',7),('trusted',6),('userblacklist',2),('usr_preferences',4),('watchers',4),('xcap',4);
 /*!40000 ALTER TABLE `version` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -560,4 +990,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2021-08-29 11:32:57
+-- Dump completed on 2022-08-31 16:51:50
