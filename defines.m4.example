@@ -4,7 +4,8 @@ define(`PUBLIC_IP', `3.95.189.100')
 define(`PORT', `5060')
 define(`SQL_ACCOUNT',`root')
 define(`SQL_PASSWORD', `')
-define(`ABUSE_DB_KEY', `')
+define(`ABUSE_DB_KEY', `') ## MANDATORY - Get the Key for the service https://www.abuseipdb.com/
+define(`APIBAN_KEY'), `') ## OPTIONAL - Get the Key for the service https://apiban.org
 define(`BUSINESS_HOURS',`America/New_York|20210104T090000|21000104T170000||WEEKLY|||MO,TU,WE,TH,FR')
 define(`AUTHORIZE_METHOD',`302')
 define(`VERIFICATION_METHOD',`CAPTCHA')

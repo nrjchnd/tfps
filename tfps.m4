@@ -67,8 +67,16 @@ modparam("acc", "report_cancels", 0)
 modparam("acc", "detect_direction", 0)
 modparam("acc", "log_facility", "LOG_LOCAL1")
 modparam("acc", "db_url", "mysql://root:SQL_PASSWORD@localhost/fps")
-modparam("acc", "extra_fields", "db: REASON->block_reason; SOURCE_IP->source_ip; FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence; ACCOUNTCOCDE->accountcode; RESPONSE->response")
-modparam("acc", "extra_fields", "log: REASON->block_reason; SOURCE_IP->source_ip; FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence; ACCOUNTCODE->accountcode; RESPONSE->response")
+modparam("acc", "extra_fields", "db: REASON->block_reason; SOURCE_IP->source_ip;
+FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence;
+ACCOUNTCODE->accountcode; RESPONSE->response;OFF_HOURS->off_hours;
+CONCURRENT_CALLS->concurrent_calls;DESTINATION->destination_country;SOURCE->source_country")
+
+modparam("acc", "extra_fields", "log: REASON->block_reason; SOURCE_IP->source_ip;
+FROM->from_uri; TO->ruri; UA->ua; CONFIDENCE->abuseconfidence;
+ACCOUNTCODE->accountcode; RESPONSE->response;OFF_HOURS->off_hours;
+CONCURRENT_CALLS->concurrent_calls;DESTINATION->destination_country;SOURCE->source_country")
+
 
 loadmodule "permissions.so"
 # ---- permissions params ----
@@ -102,6 +110,7 @@ modparam("drouting", "rule_prefix_avp", '$avp(dr_prefix)')
 loadmodule "statistics.so"
 modparam("statistics", "variable", "calls_approved")
 modparam("statistics", "variable", "calls_rejected")
+
 
 ####### Extra modules section ########
 loadmodule "db_mysql.so"
@@ -158,6 +167,9 @@ route[initial] {
     $avp(domain)=$fd;
     $avp(sourceip)=$si;
 
+    ## Consider everything above noise, start account after this point
+    if(is_method("INVITE")) do_accounting("db|log", "failed");
+        
     if(is_present_hf("P-tfps")){
 
         # New standard, all parameters in a single header
@@ -192,6 +204,8 @@ route[initial] {
         #Get concurrent calls
         if(is_present_hf("P-Calls")) {
                 $avp(simcalls)=$(hdr(P-Calls){s.int});
+        } else {
+                $avp(simcalls)=1;
         }
     }    
 
@@ -213,8 +227,8 @@ route[initial] {
         $acc_extra(FROM)=$fu;
         $acc_extra(TO)=$ru;
         $acc_extra(UA)=$ua;
+        $acc_extra(CONCURRENT_CALLS)=$avp(simcalls);
         $acc_extra(ACCOUNTCODE)=$avp(username)+"@"+$avp(domain);
-        do_accounting("db|log", "failed");
         $dlg_val(key)=$avp(username)+$avp(domain);
         record_route();
         route(check_for_fraud);
@@ -230,12 +244,16 @@ route[check_for_fraud] {
         #By default all calls are autorized
         $avp(result):="A00";
         $acc_extra(REASON)="Call Authorized";
-
+        
+        
         #Check if the user agent is blacklisted
         route(check_user_agent);
         
         #Check if the source IP is blacklisted at IP Abuse DB
         route(check_ipabusedb);
+
+        #Check also on apiban
+        route(check_apiban,$avp(source_ip));
 
         #Check the private IP blacklisted
         route(private_ip_list);
@@ -245,7 +263,13 @@ route[check_for_fraud] {
 
         #Detections ahead require user data from the database
         route(getuserdata);
-
+        $acc_extra(OFF_HOURS)=check_time_rec($avp(businesshours));
+        $acc_extra(SOURCE)="  ";
+        $acc_extra(DESTINATION)="  ";
+        
+        ## Consider everything above noise, start account after this point
+        do_accounting("db|log", "failed");
+        
         #Check if the user is blocked
         route(check_user_block);
 
@@ -260,10 +284,12 @@ route[check_for_fraud] {
 
         #Check traffic depending on the business hours
         if(check_time_rec($avp(businesshours))) {
+                $acc_extra(OFF_HOURS)=0;
                 #Regular Hours 
                 route(check_concurrent_calls,"regular");
                 route(check_daily_quota,"regular");
         } else {
+                $acc_extra(OFF_HOURS)=1;
                 route(check_concurrent_calls,"off");
                 route(check_daily_quota,"off");            
         }
@@ -311,8 +337,9 @@ route[check_ipabusedb] {
                         rest_get($var(url), $avp(http_response));
                         $json(rest_data):=$avp(http_response);
                         $var(abuse) = $json(rest_data/data/abuseConfidenceScore);
-                        $acc_extra(CONFIDENCE)=$(var(abuse){s.int});
                         $var(incountry) = $json(rest_data/data/countryCode);
+                        $acc_extra(CONFIDENCE)=$(var(abuse){s.int});
+                        $acc_extra(SOURCE)=$var(incountry);
                         cache_store("local","score_$avp(sourceip)","$var(abuse)");
                         cache_store("local","country_$avp(sourceip)","$var(incountry)");
                         xlog("L_INFO",'Check ip report=$json(rest_data/data),score=$var(abuse), country=$var(incountry)');
@@ -321,11 +348,12 @@ route[check_ipabusedb] {
                         cache_fetch("local","country_$avp(sourceip)",$var(incountry));
                         cache_fetch("local","score_$avp(sourceip)",$var(abuse));
                         $acc_extra(CONFIDENCE)=$(var(abuse){s.int});
+                        $acc_extra(SOURCE)=$var(incountry);
                         xlog("L_INFO","Check ip report from cache score=$var(abuse), country=$var(incountry) ");
                 }
 
-                if($(var(abuse){s.int})>=5) {
-                        xlog("L_INFO","Fraud Detected: IP Blacklisted $avp(context),f=$fu, r=$ru, ua=$ua");
+                if($(var(abuse){s.int})>=10) {
+                        xlog("L_INFO","Fraud Detected: IP Blacklisted f=$fu, r=$ru, ua=$ua");
                         $acc_extra(REASON)="IP Blacklisted";
                         route(respond,"R02");
                 }
@@ -335,7 +363,7 @@ route[check_ipabusedb] {
 #Check the IP blacklist in memory
 route[private_ip_list] {
 
-        if (check_address(0,$avp(source_ip), 0, "ANY")) {
+        if (check_address(0,"$avp(source_ip)", 0, "ANY")) {
                 $acc_extra(REASON)="IP blocked by private blacklist";
                 route(respond,"R14");
         }
@@ -409,6 +437,7 @@ route[check_destination_country] {
         #Find the destination country based on the prefix
         if(do_routing(99999,"C",,$avp(rule_attrs))) {
                 #Country on $avp(rule_attrs)
+                $acc_extra(DESTINATION)=$avp(rule_attrs);
                 xlog("L_INFO","Prefix found $avp(dr_prefix),$avp(rule_attrs), $avp(destination_countries)");
 
                 #Check destination Blacklisted (High probability of fraud) PRISM
@@ -644,32 +673,45 @@ route[preadmission] {
     }
 
     # Detect sql injection
-    if($au =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60) && $au!=null") {
+    if($au =~ "\\\\|(\-\-)|(')|(\%27)|(\%24)|(\%60) && $au!=null") {
         xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! au=$au");
         $acc_extra(REASON)="SQL injection";
         route(respond,"R12");
     }
 
-    if($ru =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60) && $au!=null") {
-        xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! au=$au");
+    if($ru =~ "(\==)|\\\\|(\-\-)|(')|(\%27)|(\%24)|(\%60) && $au!=null") {
+        xlog("L_INFO","Someone from $si is possibly trying a sql injection attack, blocking! au=$au");
         $acc_extra(REASON)="SQL injection";
         route(respond,"R12");
     }
 
-    if($(ct.fields(uri){uri.user}) =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
-        xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! ct=$ct");
+    if($rU =~ "\=") {
+        xlog("L_INFO","Someone from $si is possibly trying a sql injection attack, blocking! au=$au");
         $acc_extra(REASON)="SQL injection";
         route(respond,"R12");
     }
 
-    if($(ct.fields(uri){uri.host}) =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
-        xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! ct=$ct");
+    if($fU =~ "\=") {
+        xlog("L_INFO","Someone from $si is possibly trying a sql injection attack, blocking! au=$au");
         $acc_extra(REASON)="SQL injection";
         route(respond,"R12");
     }
 
-    if($fu =~ "(\=)|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
-        xlog("L_INFO","Someone from $si is doing an sql injection attack, blocking! ct=$ct");
+
+    if($(ct.fields(uri){uri.user}) =~ "(\==)|\\\\|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
+        xlog("L_INFO","Someone from $si is possibly trying a sql injection attack, blocking! ct=$ct");
+        $acc_extra(REASON)="SQL injection";
+        route(respond,"R12");
+    }
+
+    if($(ct.fields(uri){uri.host}) =~ "(\==)|\\\\|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
+        xlog("L_INFO","Someone from $si is possibly trying a sql injection attack, blocking! ct=$ct");
+        $acc_extra(REASON)="SQL injection";
+        route(respond,"R12");
+    }
+
+    if($fu =~ "\\\\|(\-\-)|(')|(\%27)|(\%24)|(\%60)") {
+        xlog("L_INFO","Someone from $si is possibly trying a sql injection attack, blocking! ct=$ct");
         $acc_extra(REASON)="SQL injection";
         route(respond,"R12");
     }
@@ -762,5 +804,21 @@ route[respond] {
         }
 }
 
+route[check_apiban] {
+        ## $paran(1) IP ADDRESS to be checked
+        $var(url)="https://apiban.org/api/"+"APIBAN_KEY"+"/check/"+$param(1);
+        $var(rc) = rest_get($var(url), $var(response), $var(ct), $var(rcode));
+        xlog("L_INFO","APIBAN answered $var(reponse) for $si\n");
+        if ($var(rc) < 0) {
+                xlog("rest_get() unable to get response from apiban $var(rc), acc=$fU\n");
+        }
+        if ($var(rcode) >= 300) {
+                xlog("L_INFO", "rest_get() rcode=$var(rcode), acc=$fU\n");
+        }
+        $json(apiban_response):=$var(response);
+        if($json(apiban_response/ipaddress)=="blocked") {
+                route(respond,"R15");
+        }
+}
 
 
